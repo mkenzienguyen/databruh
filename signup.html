@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sign Up &mdash; databruh</title>
+<style>
+    * {
+        box-sizing: border-box;
+    }
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        color: #1f2937;
+        background: #ffffff;
+    }
+    header {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 20px 60px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .logo {
+        font-size: 20px;
+        font-weight: bold;
+        color: #111827;
+        text-decoration: none;
+    }
+    nav a {
+        color: #4b5563;
+        text-decoration: none;
+        margin-left: 32px;
+        font-size: 15px;
+    }
+    nav a:hover {
+        color: #111827;
+    }
+    main {
+        max-width: 400px;
+        margin: 0 auto;
+        padding: 100px 20px 80px 20px;
+    }
+    h1 {
+        font-size: 28px;
+        margin: 0 0 8px 0;
+        color: #111827;
+    }
+    p.subtitle {
+        font-size: 15px;
+        color: #6b7280;
+        margin: 0 0 36px 0;
+    }
+    label {
+        display: block;
+        font-size: 14px;
+        font-weight: bold;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+        width: 100%;
+        padding: 11px 12px;
+        font-size: 15px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        color: #111827;
+    }
+    input:focus {
+        outline: none;
+        border-color: #111827;
+    }
+    button {
+        width: 100%;
+        background: #111827;
+        color: #ffffff;
+        border: none;
+        padding: 12px;
+        font-size: 15px;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #1f2937;
+    }
+    p.footnote {
+        font-size: 14px;
+        color: #6b7280;
+        margin-top: 24px;
+        text-align: center;
+    }
+    p.footnote a {
+        color: #111827;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    p.footnote a:hover {
+        text-decoration: underline;
+    }
+    footer {
+        border-top: 1px solid #e5e7eb;
+        padding: 24px 60px;
+        font-size: 13px;
+        color: #9ca3af;
+        text-align: center;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <a class="logo" href="index.php">databruh</a>
+    <nav>
+        <a href="index.php">Home</a>
+        <a href="login.html">Log In</a>
+    </nav>
+</header>
+
+<main>
+    <h1>Sign Up</h1>
+    <p class="subtitle">Create an account to get started with databruh.</p>
+
+    <form action="signup_process.php" method="POST">
+        <label for="fullname">Full Name</label>
+        <input type="text" id="fullname" name="fullname" required>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+
+        <label for="confirm_password">Confirm Password</label>
+        <input type="password" id="confirm_password" name="confirm_password" required>
+
+        <button type="submit">Create Account</button>
+    </form>
+
+    <p class="footnote">Already have an account? <a href="login.html">Log in</a></p>
+</main>
+
+<footer>
+    databruh &mdash; Group 1
+</footer>
+
+</body>
+</html>
