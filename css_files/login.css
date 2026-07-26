@@ -1,10 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Log In &mdash; databruh</title>
-<style>
-    * {
+* {
         box-sizing: border-box;
     }
     body {
@@ -107,38 +101,3 @@
         color: #9ca3af;
         text-align: center;
     }
-</style>
-</head>
-<body>
-
-<header>
-    <a class="logo" href="index.php">databruh</a>
-    <nav>
-        <a href="index.php">Home</a>
-        <a href="signup.html">Sign Up</a>
-    </nav>
-</header>
-
-<main>
-    <h1>Log In</h1>
-    <p class="subtitle">Sign in to access the databruh dashboard.</p>
-
-    <form action="login_process.php" method="POST">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required>
-
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" required>
-
-        <button type="submit">Log In</button>
-    </form>
-
-    <p class="footnote">Don't have an account? <a href="signup.html">Sign up</a></p>
-</main>
-
-<footer>
-    databruh &mdash; Group 1
-</footer>
-
-</body>
-</html>
