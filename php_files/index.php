@@ -107,9 +107,9 @@
 <header>
     <div class="logo">Databruh</div>
     <nav>
-        <a href="index.php">Home</a>
-        <a href="datavs.php">Dashboard</a>
-        <a href="login.html">Login</a>
+        <a href="./index.php">Home</a>
+        <a href="./datavs.php">Dashboard</a>
+        <a href="./login.php">Login</a>
     </nav>
 </header>
 
@@ -129,7 +129,7 @@
         Long<br>
         Hai<br>
     </p>
-    <a class="button" href="datavs.php">View Driver Safety Dashboard</a>
+    <a class="button" href="./datavs.php">View Driver Safety Dashboard</a>
 
     <section class="info">
         <div>

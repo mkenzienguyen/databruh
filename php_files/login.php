@@ -8,10 +8,10 @@
 <body>
 
 <header>
-    <a class="logo" href="/php_files/index.php">databruh</a>
+    <a class="logo" href="./index.php">databruh</a>
     <nav>
-        <a href="/php_files/index.php">Home</a>
-        <a href="/html_files/signup.html">Sign Up</a>
+        <a href="./index.php">Home</a>
+        <a href="./signup.php">Sign Up</a>
     </nav>
 </header>
 
@@ -29,7 +29,7 @@
         <button type="submit">Log In</button>
     </form>
 
-    <p class="footnote">Don't have an account? <a href="/html_files/signup.html">Sign up</a></p>
+    <p class="footnote">Don't have an account? <a href="./signup.php">Sign up</a></p>
 </main>
 
 <footer>

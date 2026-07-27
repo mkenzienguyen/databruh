@@ -1,5 +1,5 @@
 <?php
-$conn = new mysqli("localhost", "root", "", "databruh");
+$conn = new mysqli("localhost", "root", "", "databruh_db");
 
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
