@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Log In &mdash; databruh</title>
-<link rel="stylesheet" href="/css_files/login.css">
+    <meta charset="UTF-8">
+    <title>Log In &mdash; databruh</title>
+    <link rel="stylesheet" href="../css_files/login.css">
 </head>
 <body>
 
