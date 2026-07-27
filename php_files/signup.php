@@ -8,9 +8,9 @@
 <body>
 
 <header>
-    <a class="logo" href="./index.php">databruh</a>
+    <a class="logo" href="./home_page.php">databruh</a>
     <nav>
-        <a href="./index.php">Home</a>
+        <a href="./home_page.php">Home</a>
         <a href="./login.php">Log In</a>
     </nav>
 </header>
