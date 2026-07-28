@@ -44,12 +44,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $check_stmt->close();
 
     $hashed_password = password_hash($pass, PASSWORD_DEFAULT);
+    $typeID = "DRIVER";
 
-
-    $stmt = $conn->prepare("INSERT INTO account (FullName, Email, Password) VALUES (?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO account (FullName, Email, Password, TypeID) VALUES (?, ?, ?, ?)");
     
     if ($stmt) {
-        $stmt->bind_param("sss", $fullname, $email, $hashed_password);
+        $stmt->bind_param("ssss", $fullname, $email, $hashed_password, $typeID);
         
         if ($stmt->execute()) {
 

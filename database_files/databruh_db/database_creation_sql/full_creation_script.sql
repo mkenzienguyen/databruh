@@ -1,4 +1,4 @@
-
+DROP DATABASE databruh_db;
 CREATE DATABASE databruh_db;
 USE databruh_db;
 
