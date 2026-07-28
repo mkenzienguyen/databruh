@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Sign Up &mdash; databruh</title>
-<link rel="stylesheet" href="/css_files/signup.css">
+    <meta charset="UTF-8">
+    <title>Sign Up &mdash; databruh</title>
+    <link rel="stylesheet" href="../css_files/signup.css">
 </head>
 <body>
 
 <header>
-    <a class="logo" href="/php_files/index.php">databruh</a>
+    <a class="logo" href="./home_page.php">databruh</a>
     <nav>
-        <a href="/php_files/index.php">Home</a>
-        <a href="/html_files/login.html">Log In</a>
+        <a href="./home_page.php">Home</a>
+        <a href="./login.php">Log In</a>
     </nav>
 </header>
 
@@ -35,7 +35,7 @@
         <button type="submit">Create Account</button>
     </form>
 
-    <p class="footnote">Already have an account? <a href="/html_files/login.html">Log in</a></p>
+    <p class="footnote">Already have an account? <a href="./login.php">Log in</a></p>
 </main>
 
 <footer>

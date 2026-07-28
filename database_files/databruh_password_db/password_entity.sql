@@ -1,0 +1,11 @@
+CREATE DATABASE databruh_password_db;
+
+USE databruh_password_db;
+
+CREATE TABLE account (
+    AccountID INT AUTO_INCREMENT PRIMARY KEY,
+    FullName VARCHAR(255) NOT NULL,
+    Email VARCHAR(255) NOT NULL UNIQUE,
+    Password VARCHAR(255) NOT NULL,
+    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
