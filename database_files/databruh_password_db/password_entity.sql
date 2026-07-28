@@ -25,3 +25,8 @@ CREATE TABLE account (
     TypeID VARCHAR(10) NOT NULL,
     FOREIGN KEY (TypeID) REFERENCES account_type(TypeID)
 );
+
+
+-- Admin test acount, password is 12345
+INSERT INTO account (FullName, Email, Password, TypeID) VALUES 
+('Admin_Test_Acc', 'Admin_Test@gmail.com', '$2y$10$e7FtjUbXoh2AD93a3DBkFOijCWsfsqVlacFWIqGptPJUC9/7/Nwwu', 'ADMIN');
