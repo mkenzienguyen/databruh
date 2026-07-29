@@ -17,6 +17,9 @@ session_start();
                 <a href="./datavs.php">Dashboard</a>
                 
                 <?php if (isset($_SESSION['AccountID'])): ?>
+                    <?php if (isset($_SESSION['TypeID']) && $_SESSION['TypeID'] === 'ADMIN'): ?>
+                        <a href="./admin_page.php">Manage Accounts</a>
+                    <?php endif; ?>
                     <span class="user-greeting">Hi, <?php echo htmlspecialchars($_SESSION['FullName']); ?></span>
                     <a class="logout-link" href="./logout_process.php">Log Out</a>
                 <?php else: ?>
