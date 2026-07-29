@@ -2,13 +2,6 @@
 /**
  * Closes a maintenance job: sets EndDate and Status = 'Closed'.
  * Expected POST fields: job_id, end_date
- *
- * The schema has no stored "downtime hours" or "total cost" columns on
- * maintenance_job, so both are computed here:
- *   - total cost = SUM(Cost) across all activities on this job
- *   - downtime   = EndDate - StartDate (in whole days, since both columns
- *     are DATE not DATETIME - flag to your group if hour-level precision
- *     is actually needed for the brief's example data)
  */
 
 require_once __DIR__ . '/db_connect_fleet.php';

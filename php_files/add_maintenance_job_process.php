@@ -8,14 +8,6 @@
  *   activity_description[]    - array, matching index
  *   activity_cost[]           - optional array, matching index
  *                                (falls back to activity_type.CostEstimate if left blank)
- *
- * Frontend note: build the activity rows as repeatable inputs using
- * array-style names, e.g.:
- *   <select name="activity_type_id[]">...</select>
- *   <input name="activity_description[]">
- *   <input name="activity_cost[]">
- * with a JS "+ Add another activity" button that clones the row block.
- *
  * Job is created with Status = 'Open' and no EndDate - use
  * close_maintenance_job_process.php later to close it out.
  */

@@ -2,9 +2,6 @@
 /**
  * Safety log search with multi-parameter filters.
  * Filters supported: Driver, Vehicle, Depot, Severity, Date Range.
- * Event Type is NOT included - the event table has no EventType column/lookup
- * yet, same gap flagged earlier with datavs.php. Add that once resolved.
- *
  * All filters are optional and combine with AND. Uses GET so results are
  * bookmarkable/shareable as a URL.
  */
