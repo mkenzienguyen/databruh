@@ -21,6 +21,7 @@ session_start();
                         <a href="./admin_page.php">Manage Accounts</a>
                     <?php endif; ?>
                     <span class="user-greeting">Hi, <?php echo htmlspecialchars($_SESSION['FullName']); ?></span>
+                    <a href="./view_system_log.php">System Log</a>
                     <a class="logout-link" href="./logout_process.php">Log Out</a>
                 <?php else: ?>
                     <a href="./login.php">Login</a>
