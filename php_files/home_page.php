@@ -15,6 +15,7 @@ session_start();
             <nav>
                 <a href="./home_page.php">Home</a>
                 <a href="./datavs.php">Dashboard</a>
+                <a href="./manage_fleet.php">Manage Fleet</a>
                 
                 <?php if (isset($_SESSION['AccountID'])): ?>
                     <?php if (isset($_SESSION['TypeID']) && $_SESSION['TypeID'] === 'ADMIN'): ?>
@@ -52,6 +53,7 @@ session_start();
                 Hai<br>
             </p>
             <a class="button" href="./datavs.php">View Driver Safety Dashboard</a>
+            <a class="button" href="./manage_fleet.php">Manage Fleet</a>
 
             <section class="info">
                 <div>
