@@ -1,144 +1,201 @@
-* {
-    box-sizing: border-box;
+.home-hero {
+    background: url("../assets/fleet/refrigerated-trucks.jpg") center / cover;
 }
 
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    color: #1f2937;
-    background: #ffffff;
+.home-hero::before {
+    background: rgba(7, 10, 8, 0.48);
 }
 
-header {
-    border-bottom: 1px solid #e5e7eb;
-    padding: 20px 60px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+.home-hero-orbit {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: -1;
+    width: min(74vw, 66rem);
+    aspect-ratio: 1;
+    border: 1px solid rgba(113, 128, 107, 0.14);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
 }
 
-.logo {
-    font-size: 20px;
-    font-weight: bold;
-    color: #111827;
+.home-hero-orbit::before,
+.home-hero-orbit::after {
+    position: absolute;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: inherit;
+    content: "";
 }
 
-nav {
-    display: flex;
-    align-items: center;
-    gap: 32px;
+.home-hero-orbit::before {
+    inset: 12%;
 }
 
-nav a {
-    color: #4b5563;
-    text-decoration: none;
-    font-size: 15px;
+.home-hero-orbit::after {
+    inset: 28%;
+    border-color: rgba(167, 100, 72, 0.16);
 }
 
-nav a:hover {
-    color: #111827;
+.home-login-feedback {
+    width: fit-content;
+    margin: 1.5rem auto 0;
+    border-color: rgba(113, 128, 107, 0.35);
+    background: rgba(8, 11, 9, 0.72);
+    color: var(--white);
+    backdrop-filter: blur(16px);
 }
 
-main {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 100px 60px 80px 60px;
+.home-overview {
+    background: var(--paper);
+    color: var(--ink);
 }
 
-.eyebrow {
-    color: #6b7280;
-    font-size: 14px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    margin-bottom: 16px;
-}
-
-h1 {
-    font-size: 42px;
-    line-height: 1.2;
-    margin: 0 0 20px 0;
-    color: #111827;
-}
-
-p.description {
-    font-size: 17px;
-    line-height: 1.6;
-    color: #4b5563;
-    max-width: 600px;
-    margin: 0 0 36px 0;
-}
-
-a.button {
-    display: inline-block;
-    background: #111827;
-    color: #ffffff;
-    text-decoration: none;
-    padding: 12px 26px;
-    border-radius: 6px;
-    font-size: 15px;
-    font-weight: bold;
-}
-
-a.button:hover {
-    background: #1f2937;
-}
-
-section.info {
-    border-top: 1px solid #e5e7eb;
-    margin-top: 80px;
-    padding-top: 40px;
+.home-bento {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 40px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(12rem, auto));
+    overflow: hidden;
+    border: 1px solid var(--line-dark);
+    border-radius: var(--radius-large);
+    background: var(--line-dark);
+    gap: 1px;
 }
 
-section.info div h3 {
-    font-size: 15px;
-    color: #6b7280;
-    margin: 0 0 8px 0;
-    font-weight: normal;
+.home-card {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 2rem;
+    overflow: hidden;
+    padding: clamp(1.5rem, 3vw, 2.6rem);
+    background: var(--white);
+}
+
+.home-card-lead {
+    min-height: 34rem;
+    grid-column: span 4;
+    grid-row: span 2;
+    background: url("../assets/fleet/driver-cab.jpg") center / cover;
+    color: var(--white);
+}
+
+.home-card-project,
+.home-card-focus {
+    grid-column: span 2;
+}
+
+.home-card-focus {
+    background: var(--acid);
+}
+
+.card-index,
+.card-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
 }
 
-section.info div p {
-    font-size: 16px;
-    margin: 0;
-    color: #111827;
+.card-index {
+    color: var(--orange);
 }
 
-footer {
-    border-top: 1px solid #e5e7eb;
-    padding: 24px 60px;
-    font-size: 13px;
-    color: #9ca3af;
-    text-align: center;
+.card-label {
+    margin-bottom: 1rem;
+    color: var(--muted);
 }
 
-.user-greeting {
-    color: #4b5563;
-    font-size: 15px;
-    font-weight: 500;
+.home-card-lead .card-label {
+    color: var(--acid);
 }
 
-.logout-link {
-    color: #dc2626 !important;
+.home-card h3 {
+    max-width: 12ch;
+    margin-bottom: 1rem;
+    font-size: clamp(1.8rem, 3.8vw, 4rem);
+    font-weight: 600;
+    letter-spacing: -0.055em;
+    line-height: 0.98;
+}
+
+.home-card:not(.home-card-lead) h3 {
+    font-size: clamp(1.6rem, 2.6vw, 2.5rem);
+}
+
+.home-card p:last-child {
+    max-width: 35rem;
+    margin-bottom: 0;
+    color: var(--muted);
+}
+
+.home-card-lead p:last-child {
+    color: rgba(255, 254, 249, 0.62);
+}
+
+.home-card-focus p:last-child,
+.home-card-focus .card-label {
+    color: #47521b;
+}
+
+.card-link {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--acid);
+    font-weight: 700;
     text-decoration: none;
-    font-size: 15px;
-    font-weight: bold;
 }
 
-.logout-link:hover {
-    color: #b91c1c !important;
+.card-link span {
+    transition: transform 180ms ease;
 }
 
-.success-banner {
-    background-color: #f0fdf4;
-    border: 1px solid #bbf7d0;
-    color: #166534;
-    padding: 12px 18px;
-    border-radius: 6px;
-    font-size: 15px;
-    margin-bottom: 24px;
-    max-width: 600px;
+.card-link:hover span,
+.card-link:focus-visible span {
+    transform: translateX(0.3rem);
+}
+
+.home-story {
+    background: var(--paper-deep);
+    color: var(--ink);
+}
+
+.home-story .section-shell {
+    min-height: 52rem;
+}
+
+@media (max-width: 840px) {
+    .home-bento {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+
+    .home-card-lead,
+    .home-card-project,
+    .home-card-focus {
+        min-height: 24rem;
+        grid-column: span 1;
+        grid-row: span 1;
+    }
+
+    .home-card-project,
+    .home-card-focus {
+        min-height: 18rem;
+    }
+}
+
+@media (max-width: 560px) {
+    .home-hero h1 br {
+        display: none;
+    }
+
+    .home-hero-orbit {
+        width: 120vw;
+    }
+
+    .home-login-feedback {
+        width: 100%;
+    }
 }
