@@ -5,6 +5,51 @@
         padding: 24px;
         color: #1f2937;
     }
+    .logo {
+        font-size: 20px;
+        font-weight: bold;
+        color: #111827;
+    }
+    header {
+        border-bottom: 1px solid #e5e7eb;
+        padding: 20px 60px;
+        padding-top:5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    nav {
+        display: flex;
+        align-items: center;
+        gap: 32px;
+    }
+
+    nav a {
+        color: #4b5563;
+        text-decoration: none;
+        font-size: 15px;
+    }
+
+    nav a:hover {
+        color: #111827;
+    }
+    .user-greeting {
+        color: #4b5563;
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    .logout-link {
+        color: #dc2626 !important;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: bold;
+    }
+
+    .logout-link:hover {
+        color: #b91c1c !important;
+    }
+
     h1 {
         margin-bottom: 4px;
     }
