@@ -1,110 +1,321 @@
-body {
-    font-family: Arial, sans-serif;
-    background: #f4f4f9;
-    margin: 0;
-    padding: 20px;
-    color: #333;
+.admin-hero {
+    background: url("../assets/fleet/truck-workshop-team.jpg") center / cover;
 }
 
-.container {
-    max-width: 1000px;
-    margin: auto;
-    background: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.admin-hero::before {
+    background: rgba(7, 10, 8, 0.52);
 }
 
-h2 {
-    margin-top: 0;
+.admin-summary {
+    background: var(--ink-soft);
 }
 
-.msg {
-    background: #e2f0cb;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 4px;
-    border: 1px solid #b5e2a8;
+.admin-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    width: min(100%, var(--content-width));
+    margin: 0 auto;
+    padding: 0 var(--page-gutter);
+}
+
+.admin-summary-grid article {
+    display: flex;
+    min-height: 11rem;
+    flex-direction: column;
+    justify-content: space-between;
+    grid-column: span 2;
+    padding: 1.5rem;
+    border-left: 1px solid var(--line-light);
+}
+
+.admin-summary-grid article:last-child {
+    border-right: 1px solid var(--line-light);
+}
+
+.admin-summary-grid span,
+.toolbar-label {
+    color: var(--muted-light);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+.admin-summary-grid strong {
+    overflow: hidden;
+    color: var(--acid);
+    font-size: clamp(2.1rem, 4vw, 4rem);
+    font-weight: 600;
+    letter-spacing: -0.055em;
+    line-height: 0.92;
+    text-overflow: ellipsis;
+}
+
+.admin-summary-grid article:last-child strong {
+    font-size: clamp(1.45rem, 2.7vw, 2.7rem);
+}
+
+.admin-directory {
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.admin-feedback {
+    margin-bottom: 1.5rem;
+}
+
+.directory-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-bottom: 1.25rem;
+    padding: 1.3rem;
+    border: 1px solid var(--line-dark);
+    border-radius: var(--radius-medium);
+    background: var(--white);
+}
+
+.toolbar-label {
+    color: var(--orange);
+}
+
+.directory-toolbar p {
+    margin: 0.35rem 0 0;
+    color: var(--muted);
+    font-size: 0.86rem;
 }
 
 .search-bar {
-    margin-bottom: 20px;
     display: flex;
-    gap: 10px;
-}
-
-.search-bar input[type="text"] {
     flex: 1;
-    padding: 8px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    justify-content: flex-end;
+    gap: 0.55rem;
 }
 
-.search-bar button, .btn {
-    padding: 8px 15px;
-    background: #007bff;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+.search-bar input {
+    width: min(100%, 22rem);
+    min-height: 2.9rem;
+    padding: 0.72rem 0.9rem;
+    border: 1px solid rgba(12, 16, 14, 0.24);
+    border-radius: var(--radius-small);
+    outline: none;
+    background: var(--paper);
+    color: var(--ink);
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease;
+}
+
+.search-bar input:focus {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(113, 128, 107, 0.14);
+}
+
+.btn {
+    display: inline-flex;
+    min-height: 2.9rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.72rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-small);
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1;
     text-decoration: none;
-    display: inline-block;
+    transition:
+        color 180ms ease,
+        background 180ms ease,
+        border-color 180ms ease,
+        transform 180ms ease;
 }
 
-.search-bar button:hover, .btn:hover {
-    background: #0056b3;
+.btn:hover,
+.btn:focus-visible {
+    transform: translateY(-1px);
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 10px;
+.btn-search {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--white);
 }
 
-th, td {
-    padding: 10px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
+.btn-search:hover,
+.btn-search:focus-visible {
+    border-color: var(--acid-deep);
+    background: var(--acid);
+    color: var(--ink);
 }
 
-th {
-    background: #f8f9fa;
+.search-bar .btn-secondary {
+    border-color: var(--line-dark);
+    background: transparent;
+    color: var(--ink);
 }
 
-select {
-    padding: 5px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+.search-bar .btn-secondary:hover,
+.search-bar .btn-secondary:focus-visible {
+    border-color: var(--ink);
+    background: var(--paper-deep);
 }
 
 .btn-danger {
-    background: #dc3545;
+    min-height: 2.45rem;
+    border-color: rgba(181, 45, 32, 0.25);
+    background: rgba(167, 100, 72, 0.08);
+    color: #9e2d21;
 }
 
-.btn-danger:hover {
-    background: #c82333;
+.btn-danger:hover,
+.btn-danger:focus-visible {
+    border-color: var(--orange);
+    background: var(--orange);
+    color: var(--ink);
 }
 
-/* Add these rules to your admin_page.css file */
-
-.btn-secondary {
-    background: #6c757d;
+.admin-table-shell {
+    overflow: auto;
+    max-height: 50rem;
+    border: 1px solid var(--line-dark);
+    border-radius: var(--radius-medium);
+    background: var(--white);
+    box-shadow: var(--shadow);
 }
 
-.btn-secondary:hover {
-    background: #5a6268;
+.admin-table {
+    width: 100%;
+    min-width: 68rem;
+    border-collapse: collapse;
+    font-size: 0.84rem;
 }
 
-.text-center {
-    text-align: center;
+.admin-table th,
+.admin-table td {
+    padding: 1rem 1.05rem;
+    border-bottom: 1px solid rgba(12, 16, 14, 0.1);
+    text-align: left;
+    vertical-align: middle;
 }
 
+.admin-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--ink);
+    color: var(--white);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.admin-table tbody tr {
+    transition: background 160ms ease;
+}
+
+.admin-table tbody tr:hover {
+    background: rgba(113, 128, 107, 0.13);
+}
+
+.admin-table tbody tr.is-current-account {
+    background: rgba(113, 128, 107, 0.08);
+}
+
+.admin-table a {
+    text-underline-offset: 0.2rem;
+}
+
+.account-id {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.account-name {
+    font-weight: 800;
+}
+
+.current-tag {
+    display: inline-flex;
+    margin-left: 0.45rem;
+    padding: 0.22rem 0.45rem;
+    border-radius: 999px;
+    background: var(--acid);
+    color: var(--ink);
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
 
 .inline-form {
-    display: inline;
+    margin: 0;
 }
 
-.top-nav {
-    margin-bottom: 15px;
-    font-size: 14px;
+.role-form select {
+    min-width: 10rem;
+    min-height: 2.45rem;
+    padding: 0.55rem 2.2rem 0.55rem 0.7rem;
+    border: 1px solid rgba(12, 16, 14, 0.2);
+    border-radius: 0.65rem;
+    outline: none;
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.role-form select:focus {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(113, 128, 107, 0.14);
+}
+
+@media (max-width: 840px) {
+    .admin-summary-grid {
+        grid-template-columns: 1fr;
+        padding: 0;
+    }
+
+    .admin-summary-grid article {
+        min-height: 9rem;
+        grid-column: span 1;
+        border-right: 0;
+        border-bottom: 1px solid var(--line-light);
+    }
+
+    .admin-summary-grid article:last-child {
+        border-right: 0;
+    }
+
+    .directory-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .search-bar {
+        justify-content: flex-start;
+    }
+
+    .search-bar input {
+        width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .admin-hero h1 br {
+        display: none;
+    }
+
+    .search-bar {
+        flex-direction: column;
+    }
+
+    .search-bar .btn {
+        width: 100%;
+    }
+
+    .admin-directory .section-shell {
+        padding-right: 0.8rem;
+        padding-left: 0.8rem;
+    }
 }

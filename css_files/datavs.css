@@ -1,98 +1,313 @@
-    body {
-        font-family: Arial, sans-serif;
-        background: #f4f6f8;
-        margin: 0;
-        padding: 24px;
-        color: #1f2937;
-    }
-    .logo {
-        font-size: 20px;
-        font-weight: bold;
-        color: #111827;
-    }
-    header {
-        border-bottom: 1px solid #e5e7eb;
-        padding: 20px 60px;
-        padding-top:5px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    nav {
-        display: flex;
-        align-items: center;
-        gap: 32px;
+.dashboard-hero {
+    background: url("../assets/fleet/delivery-truck.jpg") center / cover;
+}
+
+.dashboard-hero::before {
+    background: rgba(7, 10, 8, 0.52);
+}
+
+.dashboard-summary {
+    background: var(--ink-soft);
+}
+
+.dashboard-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: min(100%, var(--content-width));
+    margin: 0 auto;
+    padding: 0 var(--page-gutter);
+}
+
+.dashboard-metrics div {
+    display: flex;
+    min-height: 10rem;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.5rem 1.3rem;
+    border-left: 1px solid var(--line-light);
+}
+
+.dashboard-metrics div:last-child {
+    border-right: 1px solid var(--line-light);
+}
+
+.dashboard-metrics span {
+    color: var(--muted-light);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+.dashboard-metrics strong {
+    color: var(--acid);
+    font-size: clamp(2.6rem, 5vw, 4.8rem);
+    font-weight: 600;
+    letter-spacing: -0.06em;
+    line-height: 0.8;
+}
+
+.dashboard-analysis {
+    background: var(--paper);
+    color: var(--ink);
+}
+
+.dashboard-bento {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-rows: repeat(4, minmax(10rem, auto));
+    overflow: hidden;
+    border: 1px solid var(--line-dark);
+    border-radius: var(--radius-large);
+    background: var(--line-dark);
+    gap: 1px;
+}
+
+.chart-card {
+    display: flex;
+    min-width: 0;
+    min-height: 27rem;
+    flex-direction: column;
+    padding: clamp(1.25rem, 2.5vw, 2.25rem);
+    background: var(--white);
+}
+
+.chart-card-type {
+    grid-column: span 4;
+    grid-row: span 2;
+    background: var(--ink-soft);
+    color: var(--white);
+}
+
+.chart-card-severity {
+    grid-column: span 2;
+    grid-row: span 2;
+    background: var(--ink-raised);
+    color: var(--white);
+}
+
+.chart-card-depot,
+.chart-card-score {
+    grid-column: span 3;
+    grid-row: span 2;
+}
+
+.chart-card-score {
+    background: var(--acid);
+}
+
+.chart-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.chart-heading span {
+    display: block;
+    margin-bottom: 0.65rem;
+    color: var(--orange);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+.chart-heading h3 {
+    margin: 0;
+    font-size: clamp(1.45rem, 2.8vw, 2.5rem);
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    line-height: 1;
+}
+
+.chart-heading > p {
+    max-width: 9rem;
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.72rem;
+    text-align: right;
+}
+
+.chart-card-type .chart-heading > p {
+    color: var(--muted-light);
+}
+
+.chart-wrap {
+    position: relative;
+    min-height: 18rem;
+    flex: 1;
+}
+
+.incident-section {
+    background: var(--paper-deep);
+    color: var(--ink);
+}
+
+.incident-layout {
+    display: grid;
+    grid-template-columns: minmax(18rem, 0.65fr) minmax(0, 1.35fr);
+    gap: clamp(3rem, 7vw, 7rem);
+    align-items: start;
+}
+
+.incident-intro h2 {
+    max-width: 9ch;
+    margin-bottom: 2rem;
+    font-size: clamp(2.8rem, 5.8vw, 5.8rem);
+    font-weight: 600;
+    letter-spacing: -0.065em;
+    line-height: 0.92;
+}
+
+.incident-intro > p {
+    max-width: 28rem;
+    color: var(--ink);
+    font-size: clamp(1.2rem, 2vw, 1.65rem);
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+}
+
+.table-shell {
+    overflow: auto;
+    max-height: 48rem;
+    border: 1px solid var(--line-dark);
+    border-radius: var(--radius-medium);
+    background: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.data-table {
+    width: 100%;
+    min-width: 68rem;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+}
+
+.data-table th,
+.data-table td {
+    padding: 1rem 1.05rem;
+    border-bottom: 1px solid rgba(12, 16, 14, 0.1);
+    text-align: left;
+    vertical-align: top;
+}
+
+.data-table th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--ink);
+    color: var(--white);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.data-table tbody tr {
+    transition: background 160ms ease;
+}
+
+.data-table tbody tr:hover {
+    background: rgba(113, 128, 107, 0.16);
+}
+
+.cell-strong {
+    font-weight: 800;
+}
+
+.description-cell {
+    min-width: 16rem;
+    color: var(--muted);
+}
+
+.severity-badge {
+    display: inline-flex;
+    min-width: 4.6rem;
+    justify-content: center;
+    padding: 0.34rem 0.62rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    font-size: 0.67rem;
+    font-weight: 800;
+}
+
+.sev-Low {
+    color: #52770b;
+}
+
+.sev-Medium {
+    color: #9a7000;
+}
+
+.sev-High {
+    color: #c85321;
+}
+
+.sev-Critical {
+    color: #b52d20;
+}
+
+@media (max-width: 960px) {
+    .dashboard-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    nav a {
-        color: #4b5563;
-        text-decoration: none;
-        font-size: 15px;
+    .dashboard-metrics div:nth-child(2) {
+        border-right: 1px solid var(--line-light);
     }
 
-    nav a:hover {
-        color: #111827;
-    }
-    .user-greeting {
-        color: #4b5563;
-        font-size: 15px;
-        font-weight: 500;
+    .dashboard-metrics div:nth-child(n + 3) {
+        border-top: 1px solid var(--line-light);
     }
 
-    .logout-link {
-        color: #dc2626 !important;
-        text-decoration: none;
-        font-size: 15px;
-        font-weight: bold;
+    .dashboard-bento {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
     }
 
-    .logout-link:hover {
-        color: #b91c1c !important;
+    .chart-card-type,
+    .chart-card-severity,
+    .chart-card-depot,
+    .chart-card-score {
+        min-height: 27rem;
+        grid-column: span 1;
+        grid-row: span 1;
     }
 
-    h1 {
-        margin-bottom: 4px;
+    .incident-layout {
+        grid-template-columns: 1fr;
     }
-    p.subtitle {
-        margin-top: 0;
-        color: #6b7280;
+}
+
+@media (max-width: 560px) {
+    .dashboard-hero h1 br {
+        display: none;
     }
-    .grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-        margin-top: 20px;
+
+    .dashboard-metrics {
+        padding: 0;
     }
-    .card {
-        background: #fff;
-        border-radius: 10px;
-        padding: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+
+    .dashboard-metrics div {
+        min-height: 8.5rem;
     }
-    .card h2 {
-        font-size: 16px;
-        margin: 0 0 12px 0;
+
+    .dashboard-metrics strong {
+        font-size: 2.8rem;
     }
-    canvas {
-        max-height: 300px;
+
+    .chart-card {
+        min-height: 24rem;
+        border-radius: 0;
     }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
+
+    .chart-heading {
+        flex-direction: column;
     }
-    th, td {
+
+    .chart-heading > p {
         text-align: left;
-        padding: 8px 10px;
-        border-bottom: 1px solid #e5e7eb;
     }
-    th {
-        background: #f9fafb;
-    }
-    .sev-Low { color: #16a34a; font-weight: bold; }
-    .sev-Medium { color: #ca8a04; font-weight: bold; }
-    .sev-High { color: #ea580c; font-weight: bold; }
-    .sev-Critical { color: #dc2626; font-weight: bold; }
-    .full-width {
-        grid-column: span 2;
-    }
+}
