@@ -119,6 +119,7 @@ $conn->close();
 <body>
     <a class="skip-link" href="#main-content">Skip to dashboard</a>
     <?php renderSiteNavigation('dashboard'); ?>
+    <div><a class="button button-dark" href="./data_vs2.php">Go to maintenance dashboard</a></div>
 
     <main id="main-content" class="site-main overflow-x-hidden w-full max-w-full">
         <section class="site-hero dashboard-hero" aria-labelledby="dashboard-title">
@@ -146,6 +147,7 @@ $conn->close();
                     >
                         View safety details
                     </button>
+                    <a class="button button-primary" href="datavs2.php">Go to maintenance dashboard</a>
                 </div>
             </div>
             <a class="scroll-cue" href="#dashboard-summary" aria-label="Scroll to dashboard summary">
@@ -415,52 +417,15 @@ $conn->close();
     ]);
     ?>
 
-    <div class="card">
-        <h2>Incidents by Severity</h2>
-        <canvas id="severityChart"></canvas>
-    </div>
-
-    <div class="card">
-        <h2>Incidents by Depot</h2>
-        <canvas id="depotChart"></canvas>
-    </div>
-
-    <div class="card">
-        <h2>Monthly Safety Score Trend</h2>
-        <canvas id="scoreChart"></canvas>
-    </div>
-
-    <div class="card full-width">
-        <h2>Recent Incident Log</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Timestamp</th>
-                    <th>Vehicle</th>
-                    <th>Driver</th>
-                    <th>Depot</th>
-                    <th>Event Type</th>
-                    <th>Severity</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($incidentRows as $row): ?>
-                <tr>
-                    <td><?php echo htmlspecialchars($row['Timestamp']); ?></td>
-                    <td><?php echo htmlspecialchars($row['VehiclePlate']); ?></td>
-                    <td><?php echo htmlspecialchars($row['DriverName'] ?? '—'); ?></td>
-                    <td><?php echo htmlspecialchars($row['DepotName'] ?? '—'); ?></td>
-                    <td><?php echo htmlspecialchars($row['EventType']); ?></td>
-                    <td class="sev-<?php echo htmlspecialchars($row['SeverityLevel']); ?>">
-                        <?php echo htmlspecialchars($row['SeverityLevel']); ?>
-                    </td>
-                    <td><?php echo htmlspecialchars($row['Description']); ?></td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
+    <script>
+        const eventTypeLabels = <?php echo json_encode($eventTypeLabels); ?>;
+        const eventTypeValues = <?php echo json_encode($eventTypeValues); ?>;
+        const severityLabels = <?php echo json_encode($severityLabels); ?>;
+        const severityValues = <?php echo json_encode($severityValues); ?>;
+        const depotLabels = <?php echo json_encode($depotLabels); ?>;
+        const depotValues = <?php echo json_encode($depotValues); ?>;
+        const driverScores = <?php echo json_encode($driverScores); ?>;
+        const scoreLabels = <?php echo json_encode($scoreLabels); ?>;
 
         Chart.defaults.color = '#58636b';
         Chart.defaults.font.family = "'Geist', 'Avenir Next', sans-serif";
@@ -674,30 +639,14 @@ $conn->close();
 
         const scoreDatasets = Object.keys(driverScores).map((name, i) => ({
             label: name,
-            data: driverScores[name].scores,
+            data: driverScores[name],
             borderColor: scoreColors[i % scoreColors.length],
             backgroundColor: 'transparent',
+            spanGaps: true,
             tension: 0.3,
             pointRadius: 3,
             pointHoverRadius: 5
         }));
-
-new Chart(document.getElementById('eventTypeChart'), {
-    type: 'bar',
-    data: {
-        labels: eventTypeLabels,
-        datasets: [{
-            label: 'Number of Incidents',
-            data: eventTypeValues,
-            backgroundColor: 'rgba(54, 162, 235, 0.7)'
-        }]
-    },
-    options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
-    }
-});
 
         chartMotion.register('scoreChart', {
             type: 'line',
@@ -717,7 +666,7 @@ new Chart(document.getElementById('eventTypeChart'), {
                 },
                 scales: {
                     x: sharedScale,
-                    y: { ...sharedScale, min: 0, max: 100 }
+                    y: { ...sharedScale, min: 0, max: 160 }
                 }
             }
         });
