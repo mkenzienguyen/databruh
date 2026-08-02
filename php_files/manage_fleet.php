@@ -16,14 +16,19 @@ function get_options(mysqli $conn, string $sql): array
     return $rows;
 }
 
-$vehicles      = get_options($conn, "SELECT VehicleID, RegistrationNumber FROM vehicle");
+$vehicles      = get_options($conn, "SELECT VehicleID, RegistrationNumber FROM vehicle WHERE IsDeleted = 0");
+$drivers       = get_options($conn, "SELECT DriverID, FullName FROM driver WHERE IsDeleted = 0");
+$classifications = get_options($conn, "SELECT ClassificationID, ClassificationName FROM vehicle_classification");
 $depots        = get_options($conn, "SELECT DepotID, DepotName FROM depot_location");
 $workshops     = get_options($conn, "SELECT WorkshopID, WorkshopName FROM workshop");
 $activityTypes = get_options($conn, "SELECT ActivityTypeID, ActivityTypeName FROM activity_type");
 $statuses      = get_options($conn, "SELECT StatusID, StatusName FROM vehicle_status");
+$severities    = get_options($conn, "SELECT SeverityID, LevelName FROM severity_level");
 $suppliers     = get_options($conn, "SELECT PartnerID, PartnerName FROM partner_company");
 $alerts        = get_options($conn, "SELECT AlertID, AlertName FROM alert WHERE Status != 'Resolved'");
 $openJobs      = get_options($conn, "SELECT JobID, VehicleID, Status FROM maintenance_job WHERE Status != 'Closed'");
+$parts         = get_options($conn, "SELECT PartID, PartName FROM part");
+$recentEvents  = get_options($conn, "SELECT EventID, Timestamp, VehicleID, EventType FROM behaviour_event ORDER BY Timestamp DESC LIMIT 50");
 $conn->close();
 ?>
 <!DOCTYPE html>
@@ -73,6 +78,9 @@ $conn->close();
     <?php if (isset($_GET['driver_added'])): ?>
         <div class="banner">Driver added successfully<?php echo isset($_GET['driver_id']) ? ' (' . htmlspecialchars($_GET['driver_id']) . ')' : ''; ?>.</div>
     <?php endif; ?>
+    <?php if (isset($_GET['vehicle_added'])): ?>
+        <div class="banner">Vehicle added successfully<?php echo isset($_GET['vehicle_id']) ? ' (' . htmlspecialchars($_GET['vehicle_id']) . ')' : ''; ?>.</div>
+    <?php endif; ?>
     <?php if (isset($_GET['part_added'])): ?>
         <div class="banner">Part added successfully.</div>
     <?php endif; ?>
@@ -81,6 +89,24 @@ $conn->close();
     <?php endif; ?>
     <?php if (isset($_GET['status_updated'])): ?>
         <div class="banner">Vehicle status updated.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['event_added'])): ?>
+        <div class="banner">Behavior event recorded.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['review_added'])): ?>
+        <div class="banner">Review comment added.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['vehicle_deleted'])): ?>
+        <div class="banner">Vehicle removed.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['driver_deleted'])): ?>
+        <div class="banner">Driver removed.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['job_deleted'])): ?>
+        <div class="banner">Draft maintenance job deleted.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['part_deleted'])): ?>
+        <div class="banner">Part deleted.</div>
     <?php endif; ?>
 
     <div class="grid">
@@ -107,6 +133,42 @@ $conn->close();
         </div>
 
         <div class="card">
+            <h2>Add Vehicle</h2>
+            <form action="add_vehicle_process.php" method="POST">
+                <label>Registration number <input type="text" name="registration_number" required></label>
+                <label>Manufacturer <input type="text" name="manufacturer"></label>
+                <label>Model <input type="text" name="model"></label>
+                <label>Classification
+                    <select name="classification_id">
+                        <option value="">-- none --</option>
+                        <?php foreach ($classifications as $c): ?>
+                            <option value="<?php echo (int) $c['ClassificationID']; ?>"><?php echo htmlspecialchars($c['ClassificationName']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Year of manufacture <input type="number" name="year_of_manufacture" min="1950" max="2100"></label>
+                <label>Status
+                    <select name="status_id">
+                        <option value="">-- none --</option>
+                        <?php foreach ($statuses as $s): ?>
+                            <option value="<?php echo (int) $s['StatusID']; ?>"><?php echo htmlspecialchars($s['StatusName']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Depot
+                    <select name="depot_id">
+                        <option value="">-- none --</option>
+                        <?php foreach ($depots as $d): ?>
+                            <option value="<?php echo (int) $d['DepotID']; ?>"><?php echo htmlspecialchars($d['DepotName']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Current odometer (km) <input type="number" name="current_odometer" value="0" min="0"></label>
+                <button type="submit">Add Vehicle</button>
+            </form>
+        </div>
+
+        <div class="card">
             <h2>Add Part</h2>
             <form action="add_part_type_process.php" method="POST">
                 <label>Part name <input type="text" name="part_name" required></label>
@@ -126,6 +188,67 @@ $conn->close();
                     </select>
                 </label>
                 <button type="submit">Add Part</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Record Behavior Event (Telematics)</h2>
+            <form action="add_behaviour_event_process.php" method="POST"
+                  onsubmit="this.timestamp.value = this.timestamp.value.replace('T', ' ') + ':00';">
+                <label>Vehicle
+                    <select name="vehicle_id" required>
+                        <?php foreach ($vehicles as $v): ?>
+                            <option value="<?php echo htmlspecialchars($v['VehicleID']); ?>"><?php echo htmlspecialchars($v['RegistrationNumber']); ?> (<?php echo htmlspecialchars($v['VehicleID']); ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Driver (optional)
+                    <select name="driver_id">
+                        <option value="">-- unknown/none --</option>
+                        <?php foreach ($drivers as $d): ?>
+                            <option value="<?php echo htmlspecialchars($d['DriverID']); ?>"><?php echo htmlspecialchars($d['FullName']); ?> (<?php echo htmlspecialchars($d['DriverID']); ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Depot (optional)
+                    <select name="depot_id">
+                        <option value="">-- none --</option>
+                        <?php foreach ($depots as $d): ?>
+                            <option value="<?php echo (int) $d['DepotID']; ?>"><?php echo htmlspecialchars($d['DepotName']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Timestamp <input type="datetime-local" name="timestamp" id="event-timestamp" required></label>
+                <button type="button" onclick="setNow('event-timestamp')" style="margin-top:6px; background:#e5e7eb; color:#111827;">Use now</button>
+                <label>Severity
+                    <select name="severity_id">
+                        <option value="">-- none --</option>
+                        <?php foreach ($severities as $s): ?>
+                            <option value="<?php echo (int) $s['SeverityID']; ?>"><?php echo htmlspecialchars($s['LevelName']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Event type <input type="text" name="event_type" placeholder="Speeding" required></label>
+                <label>Description <input type="text" name="description"></label>
+                <button type="submit">Record Event</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Add Review Comment / Coaching Note</h2>
+            <form action="add_review_comment_process.php" method="POST">
+                <label>Incident
+                    <select name="event_id" required>
+                        <?php foreach ($recentEvents as $e): ?>
+                            <option value="<?php echo (int) $e['EventID']; ?>">
+                                #<?php echo (int) $e['EventID']; ?> - <?php echo htmlspecialchars($e['EventType']); ?> - <?php echo htmlspecialchars($e['VehicleID']); ?> (<?php echo htmlspecialchars($e['Timestamp']); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>Reviewer name <input type="text" name="reviewer_name"></label>
+                <label>Comment / coaching recommendation <input type="text" name="comment" required></label>
+                <button type="submit">Add Comment</button>
             </form>
         </div>
 
@@ -163,7 +286,8 @@ $conn->close();
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label>End date/time <input type="datetime-local" name="end_date" required></label>
+                <label>End date/time <input type="datetime-local" name="end_date" id="job-end-date" required></label>
+                <button type="button" onclick="setNow('job-end-date')" style="margin-top:6px; background:#e5e7eb; color:#111827;">Use now</button>
                 <label>Total cost (VND) <input type="number" name="total_cost" required></label>
                 <button type="submit">Close Job</button>
             </form>
@@ -187,7 +311,8 @@ $conn->close();
                         <?php endforeach; ?>
                     </select>
                 </label>
-                <label>Start date/time <input type="datetime-local" name="start_date" required></label>
+                <label>Start date/time <input type="datetime-local" name="start_date" id="job-start-date" required></label>
+                <button type="button" onclick="setNow('job-start-date')" style="margin-top:6px; background:#e5e7eb; color:#111827;">Use now</button>
                 <label>Linked alert (optional)
                     <select name="alert_id">
                         <option value="">-- none --</option>
@@ -209,14 +334,87 @@ $conn->close();
                     <label>Labour hours <input type="number" step="0.1" name="labour_hours[]"></label>
                     <label>Diagnostic result <input type="text" name="diagnostic_result[]"></label>
                 </div>
-                <p class="note">This only supports one activity row for now - a "+ Add another activity" JS button that clones the block above would let a job have multiple activities in one submission.</p>
 
                 <button type="submit">Create Job</button>
             </form>
         </div>
 
+        <div class="card">
+            <h2>Remove Vehicle</h2>
+            <p class="note">Soft-delete only - the vehicle is hidden from active use but its history (jobs, incidents) is preserved.</p>
+            <form action="soft_delete_vehicle_process.php" method="POST"
+                  onsubmit="return confirm('Remove this vehicle? Its history will be kept, but it will no longer appear in active lists.');">
+                <label>Vehicle
+                    <select name="vehicle_id" required>
+                        <?php foreach ($vehicles as $v): ?>
+                            <option value="<?php echo htmlspecialchars($v['VehicleID']); ?>"><?php echo htmlspecialchars($v['RegistrationNumber']); ?> (<?php echo htmlspecialchars($v['VehicleID']); ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <button type="submit">Remove Vehicle</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Remove Driver</h2>
+            <p class="note">Soft-delete only - the driver is hidden from active use but their history (incidents, scores, certifications) is preserved.</p>
+            <form action="soft_delete_driver_process.php" method="POST"
+                  onsubmit="return confirm('Remove this driver? Their history will be kept, but they will no longer appear in active lists.');">
+                <label>Driver
+                    <select name="driver_id" required>
+                        <?php foreach ($drivers as $d): ?>
+                            <option value="<?php echo htmlspecialchars($d['DriverID']); ?>"><?php echo htmlspecialchars($d['FullName']); ?> (<?php echo htmlspecialchars($d['DriverID']); ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <button type="submit">Remove Driver</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Delete Draft Maintenance Job</h2>
+            <p class="note">Permanently deletes the job and its activities. Only works while the job is still Open - closed jobs are historical and can't be deleted here.</p>
+            <form action="delete_maintenance_job_process.php" method="POST"
+                  onsubmit="return confirm('Permanently delete this draft job and its activities? This cannot be undone.');">
+                <label>Job
+                    <select name="job_id" required>
+                        <?php foreach ($openJobs as $j): ?>
+                            <option value="<?php echo (int) $j['JobID']; ?>">
+                                Job #<?php echo (int) $j['JobID']; ?> - <?php echo htmlspecialchars($j['VehicleID']); ?> (<?php echo htmlspecialchars($j['Status']); ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <button type="submit">Delete Job</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Delete Part</h2>
+            <p class="note">Permanently deletes the part. Blocked automatically if it's already used on a job or warranty claim.</p>
+            <form action="delete_part_process.php" method="POST"
+                  onsubmit="return confirm('Permanently delete this part? This cannot be undone.');">
+                <label>Part
+                    <select name="part_id" required>
+                        <?php foreach ($parts as $p): ?>
+                            <option value="<?php echo (int) $p['PartID']; ?>"><?php echo htmlspecialchars($p['PartName']); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <button type="submit">Delete Part</button>
+            </form>
+        </div>
+
     </div>
 </main>
+
+<script>
+    function setNow(inputId) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById(inputId).value = now.toISOString().slice(0, 16);
+    }
+</script>
 
 </body>
 </html>
