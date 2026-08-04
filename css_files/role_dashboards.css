@@ -46,6 +46,29 @@
     color: var(--muted);
 }
 
+.status-unresolved,
+.status-high-risk,
+.status-retraining-required {
+    color: #b52d20;
+}
+
+.status-coached-verbal-warning,
+.status-coached-written-warning {
+    color: #9a7000;
+}
+
+.status-completed-no-concerns {
+    color: #52770b;
+}
+
+.status-expired {
+    color: #b52d20;
+}
+
+.status-valid {
+    color: #52770b;
+}
+
 .cell-actions {
     display: grid;
     gap: 0.6rem;

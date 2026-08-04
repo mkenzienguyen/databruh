@@ -786,7 +786,8 @@ body::before {
     color: var(--ink);
 }
 
-.chart-card-depot {
+.chart-card-depot,
+.chart-card-depot-trend {
     background: var(--surface);
 }
 

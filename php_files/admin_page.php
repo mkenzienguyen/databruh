@@ -2,6 +2,11 @@
 session_start();
 require_once __DIR__ . '/includes/layout.php';
 
+function statusSlug(string $status): string
+{
+    return trim(strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', trim($status))), '-');
+}
+
 $host = "localhost";
 $username = "root";
 $password = "";
@@ -19,7 +24,47 @@ if (!isset($_SESSION['AccountID']) || $_SESSION['TypeID'] !== 'ADMIN') {
 
 $message = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    if (isset($_POST['action'])) {
+    if (isset($_POST['action']) && $_POST['action'] === 'create_account') {
+        $fullName = trim((string) ($_POST['full_name'] ?? ''));
+        $email = trim((string) ($_POST['email'] ?? ''));
+        $pass = (string) ($_POST['password'] ?? '');
+        $confirmPass = (string) ($_POST['confirm_password'] ?? '');
+        $newAccountTypeID = trim((string) ($_POST['type_id'] ?? ''));
+        // ADMIN accounts are never created through this form - only the
+        // four operational roles an admin should be provisioning directly.
+        $allowedCreateRoles = ['FLEET_MGR', 'WS_MGR', 'MECHANIC', 'DRIVER'];
+
+        if ($fullName === '' || $email === '' || $pass === '' || $confirmPass === '') {
+            $message = "Error: All fields are required to create an account.";
+        } elseif (!in_array($newAccountTypeID, $allowedCreateRoles, true)) {
+            $message = "Error: Invalid account role selected.";
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $message = "Error: Invalid email format.";
+        } elseif ($pass !== $confirmPass) {
+            $message = "Error: Passwords do not match.";
+        } else {
+            $checkStmt = $conn->prepare("SELECT AccountID FROM account WHERE Email = ?");
+            $checkStmt->bind_param("s", $email);
+            $checkStmt->execute();
+            $checkStmt->store_result();
+
+            if ($checkStmt->num_rows > 0) {
+                $message = "Error: An account with this email already exists.";
+                $checkStmt->close();
+            } else {
+                $checkStmt->close();
+                $hashedPassword = password_hash($pass, PASSWORD_DEFAULT);
+                $stmt = $conn->prepare("INSERT INTO account (FullName, Email, Password, TypeID) VALUES (?, ?, ?, ?)");
+                $stmt->bind_param("ssss", $fullName, $email, $hashedPassword, $newAccountTypeID);
+                if ($stmt->execute()) {
+                    $message = "Account created successfully.";
+                } else {
+                    $message = "Error creating account: " . $conn->error;
+                }
+                $stmt->close();
+            }
+        }
+    } elseif (isset($_POST['action'])) {
         $targetID = intval($_POST['account_id']);
 
         if ($_POST['action'] === 'update_role') {
@@ -148,15 +193,19 @@ if ($fleetConn->connect_error) {
 }
 
 $driverOptions = [];
-$driverResult = $fleetConn->query('SELECT DriverID, FullName FROM driver ORDER BY FullName');
+$driverEmploymentStatus = [];
+$driverResult = $fleetConn->query('SELECT DriverID, FullName, EmploymentStatus FROM driver ORDER BY FullName');
 while ($row = $driverResult->fetch_assoc()) {
     $driverOptions[] = $row;
+    $driverEmploymentStatus[$row['DriverID']] = $row['EmploymentStatus'];
 }
 
 $mechanicOptions = [];
-$mechanicResult = $fleetConn->query('SELECT MechanicID, FullName FROM mechanic_worker ORDER BY FullName');
+$mechanicEmploymentStatus = [];
+$mechanicResult = $fleetConn->query('SELECT MechanicID, FullName, EmploymentStatus FROM mechanic_worker ORDER BY FullName');
 while ($row = $mechanicResult->fetch_assoc()) {
     $mechanicOptions[] = $row;
+    $mechanicEmploymentStatus[$row['MechanicID']] = $row['EmploymentStatus'];
 }
 $fleetConn->close();
 ?>
@@ -174,6 +223,7 @@ $fleetConn->close();
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
     <link rel="stylesheet" href="../css_files/design_system.css">
     <link rel="stylesheet" href="../css_files/admin_page.css">
+    <link rel="stylesheet" href="../css_files/role_dashboards.css">
     <link rel="stylesheet" href="../css_files/minimalist_theme.css">
     <link rel="stylesheet" href="../css_files/swiss_bento_theme.css">
     <script>
@@ -335,6 +385,48 @@ $fleetConn->close();
 
                 <div class="directory-toolbar" data-reveal data-stack-card>
                     <div>
+                        <span class="toolbar-label">Create account</span>
+                        <p>
+                            Provision a Fleet Safety Manager, Workshop Manager, Mechanic,
+                            or Driver account directly. Link a new driver/mechanic account
+                            to an operational record afterward using the directory below.
+                        </p>
+                    </div>
+
+                    <form method="POST" style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
+                        <input type="hidden" name="action" value="create_account">
+                        <div class="field-group">
+                            <label for="create-fullname">Full name</label>
+                            <input type="text" id="create-fullname" name="full_name" required>
+                        </div>
+                        <div class="field-group">
+                            <label for="create-email">Email</label>
+                            <input type="email" id="create-email" name="email" required>
+                        </div>
+                        <div class="field-group">
+                            <label for="create-password">Password</label>
+                            <input type="password" id="create-password" name="password" autocomplete="new-password" required>
+                        </div>
+                        <div class="field-group">
+                            <label for="create-confirm">Confirm password</label>
+                            <input type="password" id="create-confirm" name="confirm_password" autocomplete="new-password" required>
+                        </div>
+                        <div class="field-group">
+                            <label for="create-role">Role</label>
+                            <select id="create-role" name="type_id" required>
+                                <option value="" disabled selected>Select role</option>
+                                <option value="FLEET_MGR">Fleet Safety Manager</option>
+                                <option value="WS_MGR">Workshop Manager</option>
+                                <option value="MECHANIC">Mechanic</option>
+                                <option value="DRIVER">Driver</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-search">Create account</button>
+                    </form>
+                </div>
+
+                <div class="directory-toolbar" data-reveal data-stack-card>
+                    <div>
                         <span class="toolbar-label">Directory filter</span>
                         <p>
                             <?php if (!empty($search)): ?>
@@ -380,6 +472,7 @@ $fleetConn->close();
                                 <th scope="col">Email</th>
                                 <th scope="col">Current role</th>
                                 <th scope="col">Linked record</th>
+                                <th scope="col">Status</th>
                                 <th scope="col">Created at</th>
                                 <th scope="col">Actions</th>
                             </tr>
@@ -480,6 +573,23 @@ $fleetConn->close();
                                             <?php endif; ?>
                                         </td>
                                         <td>
+                                            <?php
+                                                $employmentStatus = null;
+                                                if ($row['TypeID'] === 'DRIVER' && $row['LinkedID'] !== null) {
+                                                    $employmentStatus = $driverEmploymentStatus[$row['LinkedID']] ?? null;
+                                                } elseif ($row['TypeID'] === 'MECHANIC' && $row['LinkedID'] !== null) {
+                                                    $employmentStatus = $mechanicEmploymentStatus[$row['LinkedID']] ?? null;
+                                                }
+                                            ?>
+                                            <?php if ($employmentStatus !== null): ?>
+                                                <span class="status-pill status-<?php echo statusSlug($employmentStatus); ?>">
+                                                    <?php echo htmlspecialchars($employmentStatus); ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="empty-state">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
                                             <time datetime="<?php echo htmlspecialchars($row['CreatedAt']); ?>">
                                                 <?php echo htmlspecialchars($row['CreatedAt']); ?>
                                             </time>
@@ -505,7 +615,7 @@ $fleetConn->close();
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="7" class="empty-state">No accounts found.</td>
+                                    <td colspan="8" class="empty-state">No accounts found.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>

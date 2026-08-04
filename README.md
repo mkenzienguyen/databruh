@@ -30,6 +30,9 @@ Notes:
 - `full_creation_script.sql` and `insert_full_script.sql` already contain everything from the smaller `driver_and_vehicle.sql`, `maintenance.sql`, and `parts_and_supplier.sql` files (and their `insert_*` equivalents) — you don't need to run those individually.
 - `full_creation_script.sql` and `password_entity.sql` both start with `DROP DATABASE`/`DROP DATABASE IF EXISTS`, so re-running them resets that database.
 - `database_files/databruh_db/suggested_indexes.sql` is optional and not required to run the app.
+- If you already have a `databruh_db` from before and don't want to drop it, run these two additive migration scripts instead of re-running `full_creation_script.sql`, then re-import `basic_views.sql` to pick up the views built on top of them:
+  - `database_files/databruh_db/database_creation_sql/coaching.sql` — adds the `coaching_log` table used to record driver coaching/retraining outcomes.
+  - `database_files/databruh_db/database_creation_sql/workshop_operations.sql` — adds the `maintenance_schedule_rule` table, `part.QuantityOnHand`/`ReorderThreshold` columns, and `activity_instance_part_used.SupplierID` used by the workshop manager dashboard.
 
 Alternatively, from a terminal with the `mysql` CLI (adjust the path to your XAMPP's `mysql` binary if it's not on your `PATH`):
 

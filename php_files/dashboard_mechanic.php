@@ -12,7 +12,7 @@ function escape(string $value): string
 
 function statusSlug(string $status): string
 {
-    return strtolower(str_replace(' ', '-', trim($status)));
+    return trim(strtolower((string) preg_replace('/[^a-z0-9]+/i', '-', trim($status))), '-');
 }
 
 $linkedId = $_SESSION['LinkedID'] ?? null;
@@ -24,14 +24,14 @@ $closedTasks = 0;
 $labourHoursThisMonth = 0.0;
 $mechanicName = $_SESSION['FullName'] ?? 'Mechanic';
 
-if ($linkedId !== null) {
-    $conn = new mysqli('localhost', 'root', '', 'databruh_db');
-    if ($conn->connect_error) {
-        http_response_code(503);
-        die('Workshop data is temporarily unavailable. Please try again later.');
-    }
-    $conn->set_charset('utf8mb4');
+$conn = new mysqli('localhost', 'root', '', 'databruh_db');
+if ($conn->connect_error) {
+    http_response_code(503);
+    die('Workshop data is temporarily unavailable. Please try again later.');
+}
+$conn->set_charset('utf8mb4');
 
+if ($linkedId !== null) {
     $stmt = $conn->prepare(
         "SELECT mj.JobID, v.RegistrationNumber, at.ActivityTypeName, ai.LabourHours,
                 ai.DiagnosticResult, mj.Status AS JobStatus, w.WorkshopName, mj.StartDate
@@ -60,15 +60,72 @@ if ($linkedId !== null) {
         }
     }
     $stmt->close();
-    $conn->close();
 }
+
+// Vehicle maintenance history lookup — available to every mechanic
+// regardless of link status, since it's fleet reference data rather
+// than a personal record.
+$allVehicles = [];
+$vehicleListResult = $conn->query(
+    'SELECT VehicleID, RegistrationNumber, Manufacturer, Model FROM vehicle ORDER BY RegistrationNumber'
+);
+while ($row = $vehicleListResult->fetch_assoc()) {
+    $allVehicles[] = $row;
+}
+
+$selectedVehicleId = trim((string) ($_GET['vehicle_id'] ?? ''));
+$vehicleJobHistory = [];
+$vehicleActivityHistory = [];
+
+if ($selectedVehicleId !== '') {
+    $jobStmt = $conn->prepare(
+        'SELECT mj.JobID, w.WorkshopName, mj.StartDate, mj.EndDate, mj.Status, mj.ToTalCost,
+                TIMESTAMPDIFF(HOUR, mj.StartDate, mj.EndDate) AS DowntimeHours
+         FROM maintenance_job mj
+         JOIN workshop w ON mj.WorkshopID = w.WorkshopID
+         WHERE mj.VehicleID = ?
+         ORDER BY mj.StartDate DESC'
+    );
+    $jobStmt->bind_param('s', $selectedVehicleId);
+    $jobStmt->execute();
+    $jobHistResult = $jobStmt->get_result();
+    while ($row = $jobHistResult->fetch_assoc()) {
+        $vehicleJobHistory[] = $row;
+    }
+    $jobStmt->close();
+
+    $activityStmt = $conn->prepare(
+        "SELECT ai.ActivityID, ai.JobID, at.ActivityTypeName, ai.LabourHours, ai.DiagnosticResult,
+                GROUP_CONCAT(DISTINCT mw.FullName ORDER BY mw.FullName SEPARATOR ', ') AS AssignedMechanics,
+                GROUP_CONCAT(DISTINCT CONCAT(p.PartName, ' (x', aipu.QuantityUsed, ')') SEPARATOR ', ') AS PartsUsed
+         FROM activity_instance ai
+         JOIN maintenance_job mj ON ai.JobID = mj.JobID
+         JOIN activity_type at ON ai.ActivityTypeID = at.ActivityTypeID
+         LEFT JOIN activity_instance_worker_assigned aiwa ON aiwa.ActivityID = ai.ActivityID
+         LEFT JOIN mechanic_worker mw ON mw.MechanicID = aiwa.MechanicID
+         LEFT JOIN activity_instance_part_used aipu ON aipu.ActivityID = ai.ActivityID
+         LEFT JOIN part p ON aipu.PartID = p.PartID
+         WHERE mj.VehicleID = ?
+         GROUP BY ai.ActivityID, ai.JobID, at.ActivityTypeName, ai.LabourHours, ai.DiagnosticResult
+         ORDER BY ai.ActivityID DESC"
+    );
+    $activityStmt->bind_param('s', $selectedVehicleId);
+    $activityStmt->execute();
+    $activityHistResult = $activityStmt->get_result();
+    while ($row = $activityHistResult->fetch_assoc()) {
+        $vehicleActivityHistory[] = $row;
+    }
+    $activityStmt->close();
+}
+
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Your assigned maintenance tasks.">
+    <meta name="description" content="Your assigned maintenance tasks, and full vehicle maintenance history lookup.">
     <title>Mechanic Dashboard - Databruh</title>
     <link rel="icon" href="../assets/databruh-mark.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -93,8 +150,9 @@ if ($linkedId !== null) {
                     <br>diagnostic work.
                 </h1>
                 <p class="hero-copy" data-hero-item>
-                    Read-only view of the maintenance activities assigned to you —
-                    diagnostics, repair history, and job context.
+                    Read-only view of the maintenance activities assigned to you,
+                    plus lookup of any vehicle's full maintenance history,
+                    diagnostics, and previous repairs.
                 </p>
                 <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
                     <div class="hero-feedback system-feedback" role="status" data-hero-item>
@@ -184,6 +242,110 @@ if ($linkedId !== null) {
                 </div>
             </section>
         <?php endif; ?>
+
+        <section class="admin-directory" aria-labelledby="vehicle-history-title">
+            <div class="section-shell">
+                <div class="chapter-heading">
+                    <div>
+                        <span class="section-kicker">Vehicle lookup</span>
+                        <h2 id="vehicle-history-title">Maintenance history, diagnostics, and previous repairs.</h2>
+                    </div>
+                    <p>
+                        Look up any vehicle in the fleet to see its full job
+                        history, diagnostic results, and repairs — not just the
+                        activities assigned to you.
+                    </p>
+                </div>
+
+                <form method="GET" class="directory-toolbar" data-reveal data-stack-card>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
+                        <div class="field-group">
+                            <label for="vehicle-lookup">Vehicle</label>
+                            <select id="vehicle-lookup" name="vehicle_id" required>
+                                <option value="" disabled <?php echo $selectedVehicleId === '' ? 'selected' : ''; ?>>Select vehicle</option>
+                                <?php foreach ($allVehicles as $v): ?>
+                                    <option value="<?php echo escape($v['VehicleID']); ?>" <?php echo $selectedVehicleId === $v['VehicleID'] ? 'selected' : ''; ?>>
+                                        <?php echo escape($v['RegistrationNumber']); ?>
+                                        — <?php echo escape(trim(($v['Manufacturer'] ?? '') . ' ' . ($v['Model'] ?? ''))); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-search">Look up</button>
+                    </div>
+                </form>
+
+                <?php if ($selectedVehicleId !== ''): ?>
+                    <div class="admin-table-shell" data-reveal data-stack-card>
+                        <table class="admin-table">
+                            <caption class="sr-only">Job history for the selected vehicle</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Job</th>
+                                    <th scope="col">Workshop</th>
+                                    <th scope="col">Started</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Downtime</th>
+                                    <th scope="col">Cost (VND)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($vehicleJobHistory): ?>
+                                    <?php foreach ($vehicleJobHistory as $job): ?>
+                                        <tr>
+                                            <td>#<?php echo (int) $job['JobID']; ?></td>
+                                            <td class="cell-strong"><?php echo escape($job['WorkshopName']); ?></td>
+                                            <td><?php echo escape($job['StartDate']); ?></td>
+                                            <td>
+                                                <span class="status-pill status-<?php echo statusSlug($job['Status'] ?? ''); ?>">
+                                                    <?php echo escape($job['Status'] ?? 'Unknown'); ?>
+                                                </span>
+                                            </td>
+                                            <td><?php echo $job['DowntimeHours'] !== null ? (int) $job['DowntimeHours'] . 'h' : '—'; ?></td>
+                                            <td><?php echo $job['ToTalCost'] !== null ? number_format((int) $job['ToTalCost']) : '—'; ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="6" class="empty-row">No maintenance jobs recorded for this vehicle.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="admin-table-shell" data-reveal data-stack-card style="margin-top:1.5rem;">
+                        <table class="admin-table">
+                            <caption class="sr-only">Diagnostic and repair records for the selected vehicle</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Job</th>
+                                    <th scope="col">Activity</th>
+                                    <th scope="col">Mechanics</th>
+                                    <th scope="col">Hours</th>
+                                    <th scope="col">Diagnostic result</th>
+                                    <th scope="col">Parts used</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($vehicleActivityHistory): ?>
+                                    <?php foreach ($vehicleActivityHistory as $activity): ?>
+                                        <tr>
+                                            <td>#<?php echo (int) $activity['JobID']; ?></td>
+                                            <td class="cell-strong"><?php echo escape($activity['ActivityTypeName']); ?></td>
+                                            <td><?php echo escape($activity['AssignedMechanics'] ?? '—'); ?></td>
+                                            <td><?php echo $activity['LabourHours'] !== null ? number_format((float) $activity['LabourHours'], 2) : '—'; ?></td>
+                                            <td class="description-cell"><?php echo escape($activity['DiagnosticResult'] ?? '—'); ?></td>
+                                            <td class="description-cell"><?php echo escape($activity['PartsUsed'] ?? '—'); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="6" class="empty-row">No diagnostic or repair records for this vehicle.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </section>
     </main>
 
     <?php renderSiteFooter('dashboard'); ?>
