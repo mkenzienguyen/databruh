@@ -10,44 +10,19 @@ if ($passwordConn->connect_error) {
     die('Account services are temporarily unavailable. Please try again later.');
 }
 
+// Self-signup only ever offers DRIVER and MECHANIC. FLEET_MGR and WS_MGR
+// are elevated roles granted exclusively by an administrator in
+// admin_page.php, so they are never exposed as a signup choice.
 $roleOptions = [];
 $roleResult = $passwordConn->query(
     "SELECT TypeID, TypeName FROM account_type
-     WHERE TypeID <> 'ADMIN'
-     ORDER BY FIELD(TypeID, 'DRIVER', 'MECHANIC', 'FLEET_MGR', 'WS_MGR')"
+     WHERE TypeID IN ('DRIVER', 'MECHANIC')
+     ORDER BY FIELD(TypeID, 'DRIVER', 'MECHANIC')"
 );
 while ($row = $roleResult->fetch_assoc()) {
     $roleOptions[] = $row;
 }
-
-$linkedIds = [];
-$linkedResult = $passwordConn->query('SELECT LinkedID FROM account WHERE LinkedID IS NOT NULL');
-while ($row = $linkedResult->fetch_assoc()) {
-    $linkedIds[] = $row['LinkedID'];
-}
 $passwordConn->close();
-
-$fleetConn = new mysqli('localhost', 'root', '', 'databruh_db');
-if ($fleetConn->connect_error) {
-    die('Account services are temporarily unavailable. Please try again later.');
-}
-
-$driverOptions = [];
-$driverResult = $fleetConn->query('SELECT DriverID, FullName FROM driver ORDER BY FullName');
-while ($row = $driverResult->fetch_assoc()) {
-    if (!in_array($row['DriverID'], $linkedIds, true)) {
-        $driverOptions[] = $row;
-    }
-}
-
-$mechanicOptions = [];
-$mechanicResult = $fleetConn->query('SELECT MechanicID, FullName FROM mechanic_worker ORDER BY FullName');
-while ($row = $mechanicResult->fetch_assoc()) {
-    if (!in_array($row['MechanicID'], $linkedIds, true)) {
-        $mechanicOptions[] = $row;
-    }
-}
-$fleetConn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -96,19 +71,20 @@ $fleetConn->close();
                     <p data-scrub-text>
                         Your name and email identify the account, the password is
                         securely hashed, and the role you choose decides exactly what
-                        your dashboard shows after you log in. Driver and Mechanic
-                        accounts link to an existing operational record so their
-                        dashboard shows only their own history.
+                        your dashboard shows after you log in. An administrator
+                        links your account to your existing driver or mechanic
+                        record after signup, so nobody can self-claim someone
+                        else's operational history.
                     </p>
 
                     <dl class="auth-details">
                         <div>
                             <dt>Available roles</dt>
-                            <dd>Fleet Manager, Workshop Manager, Mechanic, Driver</dd>
+                            <dd>Mechanic, Driver</dd>
                         </div>
                         <div>
                             <dt>Operational records</dt>
-                            <dd>Linked, not duplicated</dd>
+                            <dd>Linked by an administrator</dd>
                         </div>
                     </dl>
 
@@ -158,7 +134,7 @@ $fleetConn->close();
 
                         <div class="field-group">
                             <label for="type_id">Account role</label>
-                            <select id="type_id" name="type_id" required data-role-select>
+                            <select id="type_id" name="type_id" required>
                                 <option value="" disabled selected>Select your role</option>
                                 <?php foreach ($roleOptions as $role): ?>
                                     <option value="<?php echo htmlspecialchars($role['TypeID']); ?>">
@@ -168,39 +144,11 @@ $fleetConn->close();
                             </select>
                         </div>
 
-                        <div class="field-group" data-role-link="DRIVER" hidden>
-                            <label for="linked_id_driver">Your driver record</label>
-                            <select id="linked_id_driver" name="linked_id_driver">
-                                <option value="" disabled selected>Select your name</option>
-                                <?php foreach ($driverOptions as $driver): ?>
-                                    <option value="<?php echo htmlspecialchars($driver['DriverID']); ?>">
-                                        <?php echo htmlspecialchars($driver['FullName']); ?>
-                                        (<?php echo htmlspecialchars($driver['DriverID']); ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="field-hint">
-                                Links this account to your existing driver record so your
-                                dashboard shows only your own history.
-                            </p>
-                        </div>
-
-                        <div class="field-group" data-role-link="MECHANIC" hidden>
-                            <label for="linked_id_mechanic">Your mechanic record</label>
-                            <select id="linked_id_mechanic" name="linked_id_mechanic">
-                                <option value="" disabled selected>Select your name</option>
-                                <?php foreach ($mechanicOptions as $mechanic): ?>
-                                    <option value="<?php echo htmlspecialchars($mechanic['MechanicID']); ?>">
-                                        <?php echo htmlspecialchars($mechanic['FullName']); ?>
-                                        (<?php echo htmlspecialchars($mechanic['MechanicID']); ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                            <p class="field-hint">
-                                Links this account to your existing mechanic record so your
-                                dashboard shows only your own assigned tasks.
-                            </p>
-                        </div>
+                        <p class="field-hint">
+                            An administrator will link this account to your
+                            driver or mechanic record after signup, so your
+                            dashboard shows only your own history.
+                        </p>
 
                         <div class="field-group">
                             <label for="password">Password</label>
@@ -363,41 +311,11 @@ $fleetConn->close();
             [
                 'label' => 'Role-aware access',
                 'title' => 'Choose the role that matches your job',
-                'body' => 'Fleet Manager, Workshop Manager, Mechanic, and Driver accounts each open a dashboard scoped to that responsibility. Administrator access stays admin-provisioned only.',
+                'body' => 'Mechanic and Driver accounts each open a dashboard scoped to that responsibility. Fleet Manager, Workshop Manager, and Administrator access are elevated roles granted only by an administrator, never self-selected at signup.',
             ],
         ],
     ]);
     ?>
-    <script>
-        (function () {
-            const roleSelect = document.querySelector('[data-role-select]');
-            const linkGroups = document.querySelectorAll('[data-role-link]');
-
-            if (!roleSelect || !linkGroups.length) {
-                return;
-            }
-
-            function syncLinkGroups() {
-                const selectedRole = roleSelect.value;
-
-                linkGroups.forEach((group) => {
-                    const matches = group.dataset.roleLink === selectedRole;
-                    group.hidden = !matches;
-
-                    const select = group.querySelector('select');
-                    if (select) {
-                        select.required = matches;
-                        if (!matches) {
-                            select.value = '';
-                        }
-                    }
-                });
-            }
-
-            roleSelect.addEventListener('change', syncLinkGroups);
-            syncLinkGroups();
-        })();
-    </script>
     <?php renderSiteMotionScripts(); ?>
 </body>
 </html>

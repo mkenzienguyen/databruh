@@ -29,8 +29,21 @@
 
 .status-suspended,
 .status-terminated,
-.status-out-of-service {
+.status-out-of-service,
+.status-critical-anomaly {
     color: #b52d20;
+}
+
+.status-notable-anomaly {
+    color: #c85321;
+}
+
+.status-within-normal-range {
+    color: #52770b;
+}
+
+.status-insufficient-history {
+    color: var(--muted);
 }
 
 .cell-actions {
