@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/includes/auth.php';
 
 $host = "localhost";
 $username = "root";
@@ -20,22 +21,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         die("All fields are required. <a href='login.php'>Go back</a>");
     }
 
-    $stmt = $conn->prepare("SELECT AccountID, FullName, Email, Password, TypeID FROM account WHERE Email = ?");
+    $stmt = $conn->prepare("SELECT AccountID, FullName, Email, Password, TypeID, LinkedID FROM account WHERE Email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
-        
+
         if (password_verify($pass, $user['Password'])) {
             session_regenerate_id(true);
             $_SESSION['AccountID'] = $user['AccountID'];
             $_SESSION['FullName']  = $user['FullName'];
             $_SESSION['Email']     = $user['Email'];
             $_SESSION['TypeID']    = $user['TypeID'];
+            $_SESSION['LinkedID']  = $user['LinkedID'];
 
-            header("Location: home_page.php?login=success");
+            $dashboard = roleDashboardPath($user['TypeID']);
+            header("Location: {$dashboard}?login=success");
             exit();
         } else {
             die("Invalid email or password. <a href='login.php'>Go back</a>");

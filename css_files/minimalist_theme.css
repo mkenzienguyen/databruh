@@ -156,14 +156,6 @@ body::before {
     --hero-image: url("../assets/fleet/refrigerated-trucks.jpg");
 }
 
-.auth-hero-login {
-    --hero-image: url("../assets/fleet/driver-cab.jpg");
-}
-
-.auth-hero-signup {
-    --hero-image: url("../assets/fleet/courier-van.jpg");
-}
-
 .dashboard-hero {
     --hero-image: url("../assets/fleet/delivery-truck.jpg");
 }
@@ -670,6 +662,7 @@ body::before {
 }
 
 .field-group input,
+.field-group select,
 .password-field {
     border-color: var(--border);
     border-radius: 0.4rem;
@@ -678,11 +671,13 @@ body::before {
 }
 
 .field-group input:hover,
+.field-group select:hover,
 .password-field:hover {
     border-color: rgba(32, 37, 31, 0.3);
 }
 
 .field-group input:focus,
+.field-group select:focus,
 .password-field:focus-within {
     border-color: var(--sage);
     background: var(--surface);
@@ -1205,7 +1200,7 @@ body::before {
     color: #814a36;
 }
 
-.home-login-feedback {
+.hero-feedback {
     border-color: #b9c8b5;
     background: rgba(252, 251, 247, 0.92);
     color: #486044;

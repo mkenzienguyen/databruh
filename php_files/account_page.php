@@ -42,6 +42,7 @@ $accountStatement = $conn->prepare(
         a.Password,
         a.CreatedAt,
         a.TypeID,
+        a.LinkedID,
         t.TypeName
      FROM account a
      INNER JOIN account_type t ON a.TypeID = t.TypeID
@@ -70,6 +71,7 @@ if (!$account) {
 $_SESSION['FullName'] = $account['FullName'];
 $_SESSION['Email'] = $account['Email'];
 $_SESSION['TypeID'] = $account['TypeID'];
+$_SESSION['LinkedID'] = $account['LinkedID'];
 
 if (empty($_SESSION['account_csrf_token'])) {
     $_SESSION['account_csrf_token'] = bin2hex(random_bytes(32));
@@ -248,6 +250,12 @@ $conn->close();
                         View account details
                     </button>
                     <a class="button button-outline" href="#security">Update password</a>
+                    <a
+                        class="button button-primary"
+                        href="<?php echo escape(roleDashboardPath($account['TypeID'])); ?>"
+                    >
+                        Open your dashboard
+                    </a>
                 </div>
             </div>
             <a class="scroll-cue" href="#profile" aria-label="Scroll to your account details">
