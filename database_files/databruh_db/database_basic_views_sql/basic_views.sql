@@ -1,8 +1,6 @@
 USE databruh_db;
 
--- =====================================================================
 -- VIEW 1: Expired Driver Certifications
--- =====================================================================
 CREATE OR REPLACE VIEW view_expired_certifications AS
 SELECT 
     d.DriverID,
@@ -17,9 +15,7 @@ JOIN depot_location dl ON d.DepotID = dl.DepotID
 JOIN vehicle_certification_type vct ON dco.CertificationTypeID = vct.CertificationTypeID
 WHERE dco.ExpiryDate < CURDATE();
 
--- =====================================================================
 -- VIEW 2: Fleet Telematics & Driver Behavior Tracking
--- =====================================================================
 CREATE OR REPLACE VIEW view_driver_incidents AS
 SELECT 
     be.EventID,
@@ -61,9 +57,8 @@ JOIN vehicle v ON mj.VehicleID = v.VehicleID
 JOIN vehicle_classification vc ON v.ClassificationID = vc.ClassificationID
 JOIN workshop w ON mj.WorkshopID = w.WorkshopID;
 
--- =====================================================================
+
 -- VIEW 4: Active Predictive Telematics Alerts
--- =====================================================================
 CREATE OR REPLACE VIEW view_active_alerts AS
 SELECT 
     a.AlertID,
@@ -144,3 +139,56 @@ JOIN vehicle v ON mj.VehicleID = v.VehicleID
 JOIN warranty_part_list wpl ON wc.WarrantyClaimID = wpl.WarrantyClaimID
 JOIN part p ON wpl.PartID = p.PartID
 LEFT JOIN supplier_product_list spl ON p.PartID = spl.PartID AND pc.PartnerID = spl.PartnerID;
+
+-- =====================================================================
+-- VIEW 7: Driver Monthly Score Anomaly Detection
+--
+-- Statistical (Z-score) outlier detection: for each driver, compares
+-- every monthly score against that same driver's own historical mean
+-- and standard deviation (STDDEV_SAMP), rather than a fleet-wide or
+-- hand-picked threshold. A driver needs at least 2 recorded months
+-- before a baseline can be established; until then ZScore/AnomalyStatus
+-- are NULL/'Insufficient history' rather than dividing by zero.
+-- Thresholds follow the common outlier convention of |Z| >= 2 for a
+-- strong outlier, |Z| >= 1 for a mild one — applied only to score DROPS
+-- (negative Z), since a score rising above a driver's own average is
+-- not a safety concern.
+-- =====================================================================
+CREATE OR REPLACE VIEW view_driver_score_anomalies AS
+SELECT
+    d.DriverID,
+    d.FullName AS DriverName,
+    dl.DepotName,
+    msl.Year,
+    msl.Month,
+    msl.Score,
+    ROUND(stats.AvgScore, 2) AS DriverAvgScore,
+    ROUND(stats.StdDevScore, 2) AS DriverStdDevScore,
+    stats.MonthsRecorded,
+    CASE
+        WHEN stats.MonthsRecorded < 2 OR stats.StdDevScore IS NULL OR stats.StdDevScore = 0
+            THEN NULL
+        ELSE ROUND((msl.Score - stats.AvgScore) / stats.StdDevScore, 2)
+    END AS ZScore,
+    CASE
+        WHEN stats.MonthsRecorded < 2 OR stats.StdDevScore IS NULL OR stats.StdDevScore = 0
+            THEN 'Insufficient history'
+        WHEN (msl.Score - stats.AvgScore) / stats.StdDevScore <= -2
+            THEN 'Critical anomaly'
+        WHEN (msl.Score - stats.AvgScore) / stats.StdDevScore <= -1
+            THEN 'Notable anomaly'
+        ELSE 'Within normal range'
+    END AS AnomalyStatus
+FROM monthly_score_log msl
+JOIN driver d ON msl.DriverID = d.DriverID
+LEFT JOIN depot_location dl ON d.DepotID = dl.DepotID
+JOIN (
+    SELECT
+        DriverID,
+        AVG(Score) AS AvgScore,
+        STDDEV_SAMP(Score) AS StdDevScore,
+        COUNT(*) AS MonthsRecorded
+    FROM monthly_score_log
+    GROUP BY DriverID
+) stats ON stats.DriverID = msl.DriverID
+ORDER BY ZScore ASC;

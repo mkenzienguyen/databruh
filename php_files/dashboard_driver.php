@@ -26,6 +26,7 @@ $totalIncidents = 0;
 $criticalIncidents = 0;
 $incidents = [];
 $alerts = [];
+$scoreAnomalies = [];
 
 if ($linkedId !== null) {
     $conn = new mysqli('localhost', 'root', '', 'databruh_db');
@@ -92,6 +93,15 @@ if ($linkedId !== null) {
         $alerts[] = $row;
     }
     $alertStmt->close();
+
+    $anomalyStmt = $conn->prepare('SELECT * FROM view_driver_score_anomalies WHERE DriverID = ? ORDER BY Year, Month');
+    $anomalyStmt->bind_param('s', $linkedId);
+    $anomalyStmt->execute();
+    $anomalyResult = $anomalyStmt->get_result();
+    while ($row = $anomalyResult->fetch_assoc()) {
+        $scoreAnomalies[] = $row;
+    }
+    $anomalyStmt->close();
 
     $conn->close();
 }
@@ -184,6 +194,55 @@ if ($linkedId !== null) {
                             <canvas id="scoreChart" role="img" aria-label="Line chart of your monthly safety score."></canvas>
                         </div>
                     </article>
+                </div>
+            </section>
+
+            <section class="admin-directory" aria-labelledby="anomaly-title">
+                <div class="section-shell">
+                    <div class="chapter-heading">
+                        <div>
+                            <span class="section-kicker">Statistical anomaly detection</span>
+                            <h2 id="anomaly-title">Your score against your own baseline.</h2>
+                        </div>
+                        <p>
+                            Each month is compared against your own historical
+                            average and standard deviation (Z-score), not a
+                            fleet-wide threshold.
+                        </p>
+                    </div>
+                    <div class="admin-table-shell" data-reveal data-stack-card>
+                        <table class="admin-table">
+                            <caption class="sr-only">Your monthly score anomalies</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Month</th>
+                                    <th scope="col">Score</th>
+                                    <th scope="col">Your average</th>
+                                    <th scope="col">Z-score</th>
+                                    <th scope="col">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if ($scoreAnomalies): ?>
+                                    <?php foreach ($scoreAnomalies as $row): ?>
+                                        <tr>
+                                            <td class="cell-strong"><?php echo str_pad((string) $row['Month'], 2, '0', STR_PAD_LEFT) . '/' . $row['Year']; ?></td>
+                                            <td><?php echo (int) $row['Score']; ?></td>
+                                            <td><?php echo $row['DriverAvgScore'] !== null ? escape((string) $row['DriverAvgScore']) : '—'; ?></td>
+                                            <td><?php echo $row['ZScore'] !== null ? escape((string) $row['ZScore']) : '—'; ?></td>
+                                            <td>
+                                                <span class="status-pill status-<?php echo statusSlug($row['AnomalyStatus']); ?>">
+                                                    <?php echo escape($row['AnomalyStatus']); ?>
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr><td colspan="5" class="empty-row">No monthly scores recorded.</td></tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
