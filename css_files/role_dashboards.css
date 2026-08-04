@@ -85,6 +85,17 @@
     color: var(--muted);
 }
 
+.site-cta .button-outline {
+    border-color: var(--surface);
+    color: var(--surface);
+}
+
+.site-cta .button-outline:hover,
+.site-cta .button-outline:focus-visible {
+    background: var(--surface);
+    color: var(--ink);
+}
+
 .dashboard-toolbar {
     display: flex;
     flex-wrap: wrap;
