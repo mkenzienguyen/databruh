@@ -34,6 +34,64 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
             $stmt->close();
         }
+        elseif ($_POST['action'] === 'update_linked_id') {
+            $newLinkedId = trim((string) ($_POST['linked_id'] ?? ''));
+
+            $roleStmt = $conn->prepare("SELECT TypeID FROM account WHERE AccountID = ?");
+            $roleStmt->bind_param("i", $targetID);
+            $roleStmt->execute();
+            $targetAccount = $roleStmt->get_result()->fetch_assoc();
+            $roleStmt->close();
+
+            if (!$targetAccount || !in_array($targetAccount['TypeID'], ['DRIVER', 'MECHANIC'], true)) {
+                $message = "Error: Linked records can only be set for driver or mechanic accounts.";
+            } elseif ($newLinkedId === '') {
+                $stmt = $conn->prepare("UPDATE account SET LinkedID = NULL WHERE AccountID = ?");
+                $stmt->bind_param("i", $targetID);
+                $stmt->execute();
+                $stmt->close();
+                $message = "Linked record cleared.";
+            } else {
+                $lookupTable = $targetAccount['TypeID'] === 'DRIVER' ? 'driver' : 'mechanic_worker';
+                $lookupColumn = $targetAccount['TypeID'] === 'DRIVER' ? 'DriverID' : 'MechanicID';
+
+                $fleetConn = new mysqli($host, $username, $password, 'databruh_db');
+                if ($fleetConn->connect_error) {
+                    die("Database connection failed: " . $fleetConn->connect_error);
+                }
+                $lookupStmt = $fleetConn->prepare("SELECT 1 FROM {$lookupTable} WHERE {$lookupColumn} = ?");
+                $lookupStmt->bind_param("s", $newLinkedId);
+                $lookupStmt->execute();
+                $lookupStmt->store_result();
+                $recordExists = $lookupStmt->num_rows > 0;
+                $lookupStmt->close();
+                $fleetConn->close();
+
+                if (!$recordExists) {
+                    $message = "Error: The selected operational record could not be found.";
+                } else {
+                    $claimStmt = $conn->prepare("SELECT AccountID FROM account WHERE LinkedID = ? AND AccountID <> ?");
+                    $claimStmt->bind_param("si", $newLinkedId, $targetID);
+                    $claimStmt->execute();
+                    $claimStmt->store_result();
+                    $alreadyClaimed = $claimStmt->num_rows > 0;
+                    $claimStmt->close();
+
+                    if ($alreadyClaimed) {
+                        $message = "Error: That operational record is already linked to another account.";
+                    } else {
+                        $stmt = $conn->prepare("UPDATE account SET LinkedID = ? WHERE AccountID = ?");
+                        $stmt->bind_param("si", $newLinkedId, $targetID);
+                        if ($stmt->execute()) {
+                            $message = "Linked record successfully updated.";
+                        } else {
+                            $message = "Error updating linked record: " . $conn->error;
+                        }
+                        $stmt->close();
+                    }
+                }
+            }
+        }
         elseif ($_POST['action'] === 'delete_account') {
             if ($targetID === intval($_SESSION['AccountID'])) {
                 $message = "Error: You cannot delete your own active administrator account.";
@@ -54,14 +112,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 $search = isset($_GET['search']) ? trim($_GET['search']) : "";
 if (!empty($search)) {
     $searchParam = "%" . $search . "%";
-    $stmt = $conn->prepare("SELECT a.AccountID, a.FullName, a.Email, a.CreatedAt, t.TypeName, t.TypeID
+    $stmt = $conn->prepare("SELECT a.AccountID, a.FullName, a.Email, a.CreatedAt, a.LinkedID, t.TypeName, t.TypeID
                             FROM account a
                             JOIN account_type t ON a.TypeID = t.TypeID
                             WHERE a.FullName LIKE ? OR a.Email LIKE ?
                             ORDER BY a.AccountID DESC");
     $stmt->bind_param("ss", $searchParam, $searchParam);
 } else {
-    $stmt = $conn->prepare("SELECT a.AccountID, a.FullName, a.Email, a.CreatedAt, t.TypeName, t.TypeID
+    $stmt = $conn->prepare("SELECT a.AccountID, a.FullName, a.Email, a.CreatedAt, a.LinkedID, t.TypeName, t.TypeID
                             FROM account a
                             JOIN account_type t ON a.TypeID = t.TypeID
                             ORDER BY a.AccountID DESC");
@@ -75,6 +133,32 @@ $accountTypes = [];
 while ($row = $typesResult->fetch_assoc()) {
     $accountTypes[] = $row;
 }
+
+// Records already claimed by another account, so they don't show up twice
+// in the "link this account" dropdowns below.
+$linkedOwners = [];
+$linkedOwnerResult = $conn->query("SELECT AccountID, LinkedID FROM account WHERE LinkedID IS NOT NULL");
+while ($row = $linkedOwnerResult->fetch_assoc()) {
+    $linkedOwners[$row['LinkedID']] = intval($row['AccountID']);
+}
+
+$fleetConn = new mysqli($host, $username, $password, 'databruh_db');
+if ($fleetConn->connect_error) {
+    die("Database connection failed: " . $fleetConn->connect_error);
+}
+
+$driverOptions = [];
+$driverResult = $fleetConn->query('SELECT DriverID, FullName FROM driver ORDER BY FullName');
+while ($row = $driverResult->fetch_assoc()) {
+    $driverOptions[] = $row;
+}
+
+$mechanicOptions = [];
+$mechanicResult = $fleetConn->query('SELECT MechanicID, FullName FROM mechanic_worker ORDER BY FullName');
+while ($row = $mechanicResult->fetch_assoc()) {
+    $mechanicOptions[] = $row;
+}
+$fleetConn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -295,6 +379,7 @@ while ($row = $typesResult->fetch_assoc()) {
                                 <th scope="col">Full name</th>
                                 <th scope="col">Email</th>
                                 <th scope="col">Current role</th>
+                                <th scope="col">Linked record</th>
                                 <th scope="col">Created at</th>
                                 <th scope="col">Actions</th>
                             </tr>
@@ -347,6 +432,54 @@ while ($row = $typesResult->fetch_assoc()) {
                                             </form>
                                         </td>
                                         <td>
+                                            <?php if (in_array($row['TypeID'], ['DRIVER', 'MECHANIC'], true)): ?>
+                                                <?php $recordOptions = $row['TypeID'] === 'DRIVER' ? $driverOptions : $mechanicOptions; ?>
+                                                <?php $recordIdKey = $row['TypeID'] === 'DRIVER' ? 'DriverID' : 'MechanicID'; ?>
+                                                <form method="POST" class="inline-form role-form">
+                                                    <input type="hidden" name="action" value="update_linked_id">
+                                                    <input
+                                                        type="hidden"
+                                                        name="account_id"
+                                                        value="<?php echo $row['AccountID']; ?>"
+                                                    >
+                                                    <label
+                                                        class="sr-only"
+                                                        for="linked-<?php echo $row['AccountID']; ?>"
+                                                    >
+                                                        Linked record for <?php echo htmlspecialchars($row['FullName']); ?>
+                                                    </label>
+                                                    <select
+                                                        id="linked-<?php echo $row['AccountID']; ?>"
+                                                        name="linked_id"
+                                                        onchange="this.form.submit()"
+                                                    >
+                                                        <option value="" <?php echo $row['LinkedID'] === null ? 'selected' : ''; ?>>
+                                                            — none —
+                                                        </option>
+                                                        <?php foreach ($recordOptions as $record): ?>
+                                                            <?php
+                                                                $recordId = $record[$recordIdKey];
+                                                                $claimedBy = $linkedOwners[$recordId] ?? null;
+                                                                $isOwnRecord = $row['LinkedID'] === $recordId;
+                                                                if ($claimedBy !== null && $claimedBy !== intval($row['AccountID']) && !$isOwnRecord) {
+                                                                    continue;
+                                                                }
+                                                            ?>
+                                                            <option
+                                                                value="<?php echo htmlspecialchars($recordId); ?>"
+                                                                <?php echo $isOwnRecord ? 'selected' : ''; ?>
+                                                            >
+                                                                <?php echo htmlspecialchars($record['FullName']); ?>
+                                                                (<?php echo htmlspecialchars($recordId); ?>)
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </form>
+                                            <?php else: ?>
+                                                <span class="empty-state">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
                                             <time datetime="<?php echo htmlspecialchars($row['CreatedAt']); ?>">
                                                 <?php echo htmlspecialchars($row['CreatedAt']); ?>
                                             </time>
@@ -372,7 +505,7 @@ while ($row = $typesResult->fetch_assoc()) {
                                 <?php endwhile; ?>
                             <?php else: ?>
                                 <tr>
-                                    <td colspan="6" class="empty-state">No accounts found.</td>
+                                    <td colspan="7" class="empty-state">No accounts found.</td>
                                 </tr>
                             <?php endif; ?>
                         </tbody>
