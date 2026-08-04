@@ -63,7 +63,7 @@ $homeAssetVersions = [
                 </div>
 
                 <?php if (isset($_GET['login']) && $_GET['login'] == 'success'): ?>
-                    <div class="home-login-feedback system-feedback" role="status" data-hero-item>
+                    <div class="hero-feedback system-feedback" role="status" data-hero-item>
                         Successfully logged in. Welcome back.
                     </div>
                 <?php endif; ?>

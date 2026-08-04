@@ -24,39 +24,6 @@ require_once __DIR__ . '/includes/layout.php';
     <?php renderSiteNavigation('login'); ?>
 
     <main id="main-content" class="site-main overflow-x-hidden w-full max-w-full">
-        <section class="site-hero auth-hero auth-hero-login" aria-labelledby="login-hero-title">
-            <div class="hero-grid" aria-hidden="true"></div>
-            <div class="site-hero-content">
-                <p class="eyebrow" data-hero-item>Secure operations entry</p>
-                <h1 id="login-hero-title" class="max-w-6xl" data-hero-item>
-                    Back to
-                    <span class="hero-inline-image" aria-hidden="true"></span>
-                    <br>fleet control.
-                </h1>
-                <p class="hero-copy" data-hero-item>
-                    One verified identity restores the role and controls assigned to
-                    your place in the safety, workshop, or field operation.
-                </p>
-                <div class="hero-actions" aria-label="Login page shortcuts" data-hero-item>
-                    <a class="button button-primary" href="#login-form">Continue to log in</a>
-                    <button
-                        class="button button-secondary"
-                        type="button"
-                        data-detail-modal-open="login-access-details"
-                        aria-haspopup="dialog"
-                        aria-controls="login-access-details"
-                        aria-expanded="false"
-                    >
-                        View access details
-                    </button>
-                </div>
-            </div>
-            <a class="scroll-cue" href="#login-form" aria-label="Scroll to the login form">
-                <span>Secure entry below</span>
-                <span class="scroll-line" aria-hidden="true"></span>
-            </a>
-        </section>
-
         <div class="site-marquee" aria-hidden="true">
             <div class="marquee-track">
                 <div class="marquee-group">
@@ -94,6 +61,17 @@ require_once __DIR__ . '/includes/layout.php';
                             <dd>Verified email and password</dd>
                         </div>
                     </dl>
+
+                    <button
+                        class="button button-secondary"
+                        type="button"
+                        data-detail-modal-open="login-access-details"
+                        aria-haspopup="dialog"
+                        aria-controls="login-access-details"
+                        aria-expanded="false"
+                    >
+                        View access details
+                    </button>
                 </div>
 
                 <div class="auth-form-card" data-reveal data-stack-card>

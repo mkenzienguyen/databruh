@@ -1,13 +1,5 @@
-.auth-hero-login {
-    background: url("../assets/fleet/driver-cab.jpg") center / cover;
-}
-
-.auth-hero-signup {
-    background: url("../assets/fleet/courier-van.jpg") center / cover;
-}
-
-.auth-hero::before {
-    background: rgba(7, 10, 8, 0.52);
+.auth-page .site-marquee {
+    margin-top: 6.5rem;
 }
 
 .auth-workspace {
@@ -159,12 +151,17 @@
     gap: 0.55rem;
 }
 
+.field-group[hidden] {
+    display: none;
+}
+
 .field-group label {
     font-size: 0.82rem;
     font-weight: 700;
 }
 
-.field-group input {
+.field-group input,
+.field-group select {
     width: 100%;
     min-height: 3.3rem;
     padding: 0.82rem 0.95rem;
@@ -179,14 +176,23 @@
         box-shadow 180ms ease;
 }
 
-.field-group input:hover {
+.field-group input:hover,
+.field-group select:hover {
     border-color: rgba(12, 16, 14, 0.5);
 }
 
-.field-group input:focus {
+.field-group input:focus,
+.field-group select:focus {
     border-color: var(--ink);
     background: var(--white);
     box-shadow: 0 0 0 3px rgba(113, 128, 107, 0.14);
+}
+
+.field-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.78rem;
+    line-height: 1.4;
 }
 
 .password-field {
@@ -343,10 +349,6 @@
 }
 
 @media (max-width: 560px) {
-    .auth-hero h1 br {
-        display: none;
-    }
-
     .auth-shell {
         padding-right: 0.8rem;
         padding-left: 0.8rem;

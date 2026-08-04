@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/auth.php';
+
 if (!function_exists('layoutEscape')) {
     function layoutEscape(string $value): string
     {
@@ -24,6 +26,9 @@ if (!function_exists('renderSiteNavigation')) {
         $fullName = trim((string) ($_SESSION['FullName'] ?? ''));
         $nameParts = $fullName !== '' ? preg_split('/\s+/', $fullName) : [];
         $firstName = $nameParts[0] ?? $fullName;
+        $dashboardHref = $isLoggedIn
+            ? './' . roleDashboardPath((string) ($_SESSION['TypeID'] ?? ''))
+            : './datavs.php';
         ?>
         <header class="account-nav-shell site-nav-shell">
             <nav class="account-nav site-nav" aria-label="Primary navigation">
@@ -36,7 +41,7 @@ if (!function_exists('renderSiteNavigation')) {
                     <a href="./home_page.php"<?php echo layoutCurrentPage('home', $currentPage); ?>>
                         Home
                     </a>
-                    <a href="./datavs.php"<?php echo layoutCurrentPage('dashboard', $currentPage); ?>>
+                    <a href="<?php echo layoutEscape($dashboardHref); ?>"<?php echo layoutCurrentPage('dashboard', $currentPage); ?>>
                         Dashboard
                     </a>
                     <?php if ($isAdministrator): ?>
@@ -83,6 +88,9 @@ if (!function_exists('renderSiteFooter')) {
     function renderSiteFooter(string $currentPage): void
     {
         $isLoggedIn = isset($_SESSION['AccountID']);
+        $dashboardHref = $isLoggedIn
+            ? './' . roleDashboardPath((string) ($_SESSION['TypeID'] ?? ''))
+            : './datavs.php';
         ?>
         <footer class="account-footer site-footer">
             <a class="brand footer-brand" href="./home_page.php">
@@ -94,7 +102,7 @@ if (!function_exists('renderSiteFooter')) {
                 <a href="./home_page.php"<?php echo layoutCurrentPage('home', $currentPage); ?>>
                     Home
                 </a>
-                <a href="./datavs.php"<?php echo layoutCurrentPage('dashboard', $currentPage); ?>>
+                <a href="<?php echo layoutEscape($dashboardHref); ?>"<?php echo layoutCurrentPage('dashboard', $currentPage); ?>>
                     Dashboard
                 </a>
                 <?php if ($isLoggedIn): ?>
