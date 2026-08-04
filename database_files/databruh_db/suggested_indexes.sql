@@ -1,10 +1,4 @@
--- =====================================================================
--- SUGGESTED INDEXES — databruh_db
--- =====================================================================
--- This file is a proposal only. It is NOT included in the creation/
--- insertion/views scripts and is NOT run automatically by anything in
--- this project. Nothing here has been applied to the working database.
--- Apply manually with, e.g.:
+-- Apply manually with
 --   mysql -u root databruh_db < suggested_indexes.sql
 --
 -- Method: every WHERE / JOIN ON / ORDER BY / GROUP BY column actually
@@ -13,8 +7,6 @@
 -- against SHOW INDEX on the live schema to see what InnoDB already
 -- covers automatically.
 --
--- Baseline InnoDB already gives us for free, so these are NOT repeated
--- below:
 --   - Every PRIMARY KEY and UNIQUE column (AccountID, Email, LinkedID,
 --     VehicleID, RegistrationNumber, DriverID, LicenseNumber,
 --     MechanicID, WorkshopID, PartID, AlertID, JobID, ActivityID, ...)
@@ -27,7 +19,6 @@
 -- Everything below targets a query pattern that is NOT already served
 -- by one of those automatic indexes.
 -- =====================================================================
-
 
 -- ---------------------------------------------------------------------
 -- alert
@@ -182,12 +173,105 @@ CREATE UNIQUE INDEX idx_supplier_product_list_part_partner ON supplier_product_l
 
 
 -- =====================================================================
--- Out of current scope
+-- Added after business_rules.sql and the fleet/workshop-manager
+-- dashboards started actually querying tables this file previously
+-- marked "out of scope" for lack of a reader. Confirmed with EXPLAIN
+-- against the live schema (see PR discussion / session notes) before
+-- adding — table sizes are still tiny today so the optimizer doesn't
+-- always pick these yet, but the access pattern is real and will only
+-- get worse as the tables grow.
 -- =====================================================================
--- warranty_claim, warranty_part_list, activity_instance_part_used, and
--- driver_certification_owned are defined and have views built on top
--- of them (view_active_warranty_ledger, view_part_consumption_lifecycle,
--- view_expired_certifications), but no page in php_files/ currently
--- queries them. Left unindexed beyond their existing PK/FK coverage
--- until a dashboard actually reads from them — indexing unused access
--- paths is guesswork, not evidence-based.
+
+-- ---------------------------------------------------------------------
+-- monthly_score_log
+-- ---------------------------------------------------------------------
+-- sp_check_assignment_eligibility (business_rules.sql) runs this on
+-- every vehicle_driver_assignment INSERT and reactivation:
+--   SELECT Score FROM monthly_score_log
+--   WHERE DriverID = ? AND (Year < ? OR (Year = ? AND Month <= ?))
+--   ORDER BY Year DESC, Month DESC LIMIT 1
+-- The existing UNIQUE(DriverID, Month, Year) has DriverID leftmost, so
+-- the equality filter uses it, but its column order (Month before Year)
+-- doesn't match this query's ORDER BY (Year, Month) — confirmed via
+-- EXPLAIN: "Using index condition; Using where; Using filesort". This
+-- also assists view_coaching_required's per-driver latest-score lookup.
+-- A trigger firing on every assignment write is exactly the kind of hot
+-- path worth avoiding a filesort on:
+CREATE INDEX idx_monthly_score_log_driver_year_month ON monthly_score_log (DriverID, Year, Month);
+
+-- ---------------------------------------------------------------------
+-- coaching_log
+-- ---------------------------------------------------------------------
+-- view_driver_risk_summary runs this once per driver row (correlated
+-- subquery):
+--   SELECT COUNT(*) FROM coaching_log
+--   WHERE DriverID = ? AND Outcome = 'Retraining Required'
+-- Only DriverID is indexed today (auto FK index); Outcome is filtered
+-- after. EXPLAIN currently shows a full scan (table is 8 rows, so the
+-- optimizer skips even the DriverID index) — the composite becomes
+-- worth it once coaching_log has real history behind it:
+CREATE INDEX idx_coaching_log_driver_outcome ON coaching_log (DriverID, Outcome);
+
+-- ---------------------------------------------------------------------
+-- driver_certification_owned
+-- ---------------------------------------------------------------------
+-- view_expired_certifications: "WHERE dco.ExpiryDate < CURDATE()".
+-- ExpiryDate isn't covered by the (DriverID, CertificationTypeID)
+-- PRIMARY KEY at all — EXPLAIN confirms a full table scan (type: ALL,
+-- possible_keys: NULL) since this filters across all drivers, not one:
+CREATE INDEX idx_driver_cert_owned_expiry ON driver_certification_owned (ExpiryDate);
+
+
+-- =====================================================================
+-- NOTE — the behaviour_event non-sargable date filter is now a hotter
+-- path than when first flagged above
+-- =====================================================================
+-- sp_recalculate_driver_month_score (business_rules.sql) runs on EVERY
+-- behaviour_event insert/update/delete via trigger, not just on a
+-- dashboard page load:
+--   WHERE be.DriverID = p_driver
+--     AND YEAR(be.Timestamp) = p_year AND MONTH(be.Timestamp) = p_month
+-- Same non-sargable wrapping already called out above for the "critical
+-- incidents this month" dashboard stat — no index (existing or new) can
+-- be used for this WHERE clause as written. Two real fixes, in order of
+-- preference:
+--   1. Rewrite the procedure's WHERE to a sargable range:
+--        AND be.Timestamp >= STR_TO_DATE(CONCAT(p_year, '-', p_month, '-01'), '%Y-%m-%d')
+--        AND be.Timestamp <  DATE_ADD(STR_TO_DATE(CONCAT(p_year, '-', p_month, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+--      then idx_behaviour_event_driver_timestamp above already serves it.
+--   2. If the procedure can't be touched, add generated+indexed columns
+--      instead: ADD COLUMN EventYear SMALLINT GENERATED ALWAYS AS
+--      (YEAR(Timestamp)) STORED, EventMonth TINYINT GENERATED ALWAYS AS
+--      (MONTH(Timestamp)) STORED, then index (DriverID, EventYear,
+--      EventMonth) — but this only helps once something actually
+--      queries the generated columns instead of YEAR()/MONTH(Timestamp).
+-- An index alone does not fix this either way.
+
+
+-- =====================================================================
+-- Not indexable — column-to-column comparison
+-- =====================================================================
+-- view_parts_below_reorder: "WHERE p.QuantityOnHand <= p.ReorderThreshold"
+-- compares two columns of the same row rather than a column to a
+-- constant. No B-tree index (single-column, composite, or otherwise)
+-- can accelerate this — it's a full scan by construction. Table is 5
+-- rows today so this is moot in practice; if it ever mattered at scale,
+-- the fix would be a generated boolean column (LowStock GENERATED
+-- ALWAYS AS (QuantityOnHand <= ReorderThreshold)) with an index on
+-- that, not an index on the two source columns.
+
+
+-- =====================================================================
+-- Checked, still out of current scope
+-- =====================================================================
+-- warranty_claim, warranty_part_list, and activity_instance_part_used
+-- are now read by view_supplier_performance and the workshop
+-- manager/mechanic dashboards, but every join into them is on a
+-- FOREIGN KEY column (ActivityID, PartID, PartnerID, SupplierID) that
+-- InnoDB already auto-indexes — same reasoning as the
+-- activity_instance_worker_assigned.MechanicID case below. Nothing new
+-- needed there.
+--
+-- view_part_consumption_lifecycle and view_active_warranty_ledger are
+-- still unread by any page in php_files/ — left as-is until something
+-- actually queries them.

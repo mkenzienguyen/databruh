@@ -85,13 +85,36 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $activeCheck->close();
             } else {
                 $activeCheck->close();
-                $stmt = $conn->prepare(
-                    'INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate) VALUES (?, ?, ?)'
-                );
-                $stmt->bind_param('sss', $vehicleId, $driverId, $startDate);
-                $message = $stmt->execute() ? 'Assignment created.' : 'Could not create assignment.';
-                $messageIsError = !$stmt->affected_rows;
-                $stmt->close();
+                // The database enforces the brief's assignment rules directly
+                // (trg_vehicle_driver_assignment_before_insert in
+                // business_rules.sql): vehicle not Under Maintenance/Out of
+                // Service, driver holds every required unexpired
+                // certification, safety score above 50, and no unresolved
+                // critical incident. A violation raises SIGNAL SQLSTATE
+                // '45000', which mysqli surfaces as a mysqli_sql_exception —
+                // catch it here and show its message directly, since it's
+                // already a plain-language explanation of which rule failed.
+                try {
+                    $stmt = $conn->prepare(
+                        'INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate) VALUES (?, ?, ?)'
+                    );
+                    $stmt->bind_param('sss', $vehicleId, $driverId, $startDate);
+                    if ($stmt->execute()) {
+                        $message = 'Assignment created.';
+                        $messageIsError = false;
+                    } else {
+                        // Covers environments where mysqli isn't in
+                        // exception-throwing mode: execute() returns false
+                        // instead, with the trigger's SIGNAL message on
+                        // $stmt->error.
+                        $message = $stmt->error !== '' ? $stmt->error : 'Could not create assignment.';
+                        $messageIsError = true;
+                    }
+                    $stmt->close();
+                } catch (mysqli_sql_exception $e) {
+                    $message = $e->getMessage();
+                    $messageIsError = true;
+                }
             }
         }
     } elseif ($action === 'end_assignment') {
@@ -278,6 +301,39 @@ foreach ($depotTrendByDepot as $depotName => $monthCounts) {
 }
 
 // ---------------------------------------------------------------
+// Driver safety score trend: every driver's monthly score, so fleet
+// managers can compare drivers over time (not just against their own
+// baseline, which the anomaly table above already covers). Missing
+// months for a given driver are left as null so Chart.js draws a gap
+// instead of a misleading drop to zero.
+// ---------------------------------------------------------------
+$driverScoreTrendMonths = [];
+$driverScoreTrendByDriver = [];
+$driverScoreTrendResult = $conn->query(
+    "SELECT d.FullName AS DriverName, msl.Year, msl.Month, msl.Score
+     FROM monthly_score_log msl
+     JOIN driver d ON msl.DriverID = d.DriverID
+     ORDER BY msl.Year, msl.Month"
+);
+while ($row = $driverScoreTrendResult->fetch_assoc()) {
+    $ymKey = ((int) $row['Year']) * 100 + (int) $row['Month'];
+    $ymLabel = str_pad((string) $row['Month'], 2, '0', STR_PAD_LEFT) . '/' . $row['Year'];
+    $driverScoreTrendMonths[$ymKey] = $ymLabel;
+    $driverScoreTrendByDriver[$row['DriverName']][$ymKey] = (int) $row['Score'];
+}
+ksort($driverScoreTrendMonths);
+$driverScoreTrendKeys = array_keys($driverScoreTrendMonths);
+$driverScoreTrendLabels = array_values($driverScoreTrendMonths);
+$driverScoreTrendSeries = [];
+foreach ($driverScoreTrendByDriver as $driverName => $scoresByKey) {
+    $series = [];
+    foreach ($driverScoreTrendKeys as $key) {
+        $series[] = $scoresByKey[$key] ?? null;
+    }
+    $driverScoreTrendSeries[] = ['label' => $driverName, 'data' => $series];
+}
+
+// ---------------------------------------------------------------
 // Incident review: search/filter by driver, vehicle, depot, event
 // type, severity, resolution status, and date range.
 // ---------------------------------------------------------------
@@ -410,6 +466,41 @@ $unauthorizedVehicleOperation = [];
 $unauthorizedResult = $conn->query('SELECT * FROM view_unauthorized_vehicle_operation');
 while ($row = $unauthorizedResult->fetch_assoc()) {
     $unauthorizedVehicleOperation[] = $row;
+}
+
+// ---------------------------------------------------------------
+// Coaching / training compliance: "A driver with a score of 75 or
+// below must attend driver coaching. A driver with a safety score of
+// 50 or below cannot be assigned to a vehicle until they complete
+// safety training." The <=50 half is enforced at the database layer
+// (trg_vehicle_driver_assignment_before_insert); this table is how the
+// fleet manager sees both halves and knows who to schedule.
+// ---------------------------------------------------------------
+$coachingRequired = [];
+$coachingRequiredResult = $conn->query('SELECT * FROM view_coaching_required');
+while ($row = $coachingRequiredResult->fetch_assoc()) {
+    $coachingRequired[] = $row;
+}
+
+// Drivers currently on safety hold: an unresolved critical incident, per
+// "If a critical event happens the driver will be made inactive and
+// unable to be assigned to a vehicle until the review has been
+// completed or he completes the safety training." Same rule the
+// assignment trigger enforces, surfaced here so it's visible before a
+// fleet manager even tries to create the assignment.
+$safetyHoldDriverIds = [];
+$safetyHoldResult = $conn->query(
+    "SELECT DISTINCT be.DriverID
+     FROM behaviour_event be
+     JOIN severity_level sl ON be.SeverityID = sl.SeverityID
+     WHERE sl.LevelName = 'Critical'
+       AND be.DriverID IS NOT NULL
+       AND NOT EXISTS (
+           SELECT 1 FROM coaching_log cl WHERE cl.EventID = be.EventID
+       )"
+);
+while ($row = $safetyHoldResult->fetch_assoc()) {
+    $safetyHoldDriverIds[$row['DriverID']] = true;
 }
 
 $conn->close();
@@ -557,6 +648,26 @@ $conn->close();
                         </div>
                     </article>
                 </div>
+            </div>
+        </section>
+
+        <section id="driver-score-visuals" class="dashboard-analysis" data-chart-section aria-labelledby="driver-score-trend-title">
+            <div class="section-shell">
+                <div class="chapter-heading">
+                    <div>
+                        <span class="section-kicker">Month over month</span>
+                        <h2 id="driver-score-trend-title">Every driver's safety score, side by side.</h2>
+                    </div>
+                    <p>
+                        One line per driver. Missing months mean that driver had no
+                        recorded score that month, not a score of zero.
+                    </p>
+                </div>
+                <article class="chart-card" data-stack-card style="min-height: 26rem;">
+                    <div class="chart-wrap">
+                        <canvas id="driverScoreTrendChart" role="img" aria-label="Line chart comparing every driver's monthly safety score."></canvas>
+                    </div>
+                </article>
             </div>
         </section>
 
@@ -971,6 +1082,56 @@ $conn->close();
             </div>
         </section>
 
+        <section class="admin-directory" aria-labelledby="coaching-title">
+            <div class="section-shell">
+                <div class="chapter-heading">
+                    <div>
+                        <span class="section-kicker">Coaching &amp; training compliance</span>
+                        <h2 id="coaching-title">Score-driven coaching and training requirements.</h2>
+                    </div>
+                    <p>
+                        A driver whose most recent monthly score is 75 or below must
+                        attend driver coaching. At 50 or below, the database blocks
+                        any new vehicle assignment for that driver until they
+                        complete safety training.
+                    </p>
+                </div>
+                <div class="admin-table-shell" data-reveal data-stack-card>
+                    <table class="admin-table">
+                        <caption class="sr-only">Drivers requiring coaching or safety training</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Driver</th>
+                                <th scope="col">Depot</th>
+                                <th scope="col">Month</th>
+                                <th scope="col">Score</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($coachingRequired): ?>
+                                <?php foreach ($coachingRequired as $row): ?>
+                                    <tr>
+                                        <td class="cell-strong"><?php echo escape($row['DriverName']); ?></td>
+                                        <td><?php echo escape($row['DepotName'] ?? '—'); ?></td>
+                                        <td><?php echo str_pad((string) $row['Month'], 2, '0', STR_PAD_LEFT) . '/' . $row['Year']; ?></td>
+                                        <td><?php echo (int) $row['Score']; ?></td>
+                                        <td>
+                                            <span class="status-pill status-<?php echo statusSlug($row['ComplianceStatus']); ?>">
+                                                <?php echo escape($row['ComplianceStatus']); ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="5" class="empty-row">No drivers currently require coaching or training.</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <section class="admin-directory" aria-labelledby="driver-directory-title">
             <div class="section-shell">
                 <div class="chapter-heading">
@@ -999,7 +1160,12 @@ $conn->close();
                                     $expired = strtotime($driver['LicenseExpiration']) < time();
                                     ?>
                                     <tr>
-                                        <td class="cell-strong"><?php echo escape($driver['FullName']); ?></td>
+                                        <td class="cell-strong">
+                                            <?php echo escape($driver['FullName']); ?>
+                                            <?php if (isset($safetyHoldDriverIds[$driver['DriverID']])): ?>
+                                                <div><span class="status-pill status-critical">Safety hold — critical incident pending review</span></div>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo escape($driver['DepotName'] ?? '—'); ?></td>
                                         <td><?php echo escape($driver['LicenseNumber']); ?></td>
                                         <td class="<?php echo $expired ? 'sev-Critical' : ''; ?>">
@@ -1190,6 +1356,13 @@ $conn->close();
         const depotTrendMonths = <?php echo json_encode($depotTrendMonths); ?>;
         const depotTrendSeries = <?php echo json_encode($depotTrendSeries); ?>;
         const depotTrendColors = ['#285f77', '#42695e', '#a97221', '#b83d29', '#742a23'];
+        const driverScoreTrendLabels = <?php echo json_encode($driverScoreTrendLabels); ?>;
+        const driverScoreTrendSeries = <?php echo json_encode($driverScoreTrendSeries); ?>;
+        const driverScoreTrendColors = [
+            '#285f77', '#42695e', '#a97221', '#b83d29', '#742a23',
+            '#5b4b8a', '#1f7a63', '#c85321', '#3d5a80', '#8a4f7d',
+            '#4a7c59', '#9a3b3b'
+        ];
 
         Chart.defaults.color = '#58636b';
         Chart.defaults.font.family = "'Geist', 'Avenir Next', sans-serif";
@@ -1267,6 +1440,30 @@ $conn->close();
                 maintainAspectRatio: false,
                 plugins: { legend: { position: 'bottom' } },
                 scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        new Chart(document.getElementById('driverScoreTrendChart'), {
+            type: 'line',
+            data: {
+                labels: driverScoreTrendLabels,
+                datasets: driverScoreTrendSeries.map((series, index) => ({
+                    label: series.label,
+                    data: series.data,
+                    borderColor: driverScoreTrendColors[index % driverScoreTrendColors.length],
+                    backgroundColor: 'transparent',
+                    spanGaps: true,
+                    tension: 0.3,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    borderWidth: 1.5
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } },
+                scales: { y: { min: 0, max: 100 } }
             }
         });
     </script>

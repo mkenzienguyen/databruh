@@ -103,6 +103,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $mechanicId = trim((string) ($_POST['mechanic_id'] ?? ''));
         $labourHoursRaw = trim((string) ($_POST['labour_hours'] ?? ''));
         $diagnosticResult = trim((string) ($_POST['diagnostic_result'] ?? ''));
+        $repeatFault = isset($_POST['repeat_fault']) ? 1 : 0;
+        $warrantyApplicable = isset($_POST['warranty_applicable']) ? 1 : 0;
 
         if ($jobId <= 0 || $activityTypeId <= 0 || $mechanicId === '') {
             $message = 'Job, activity type, and mechanic are required.';
@@ -110,17 +112,22 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         } else {
             $labourHours = $labourHoursRaw !== '' ? (float) $labourHoursRaw : null;
             $stmt = $conn->prepare(
-                'INSERT INTO activity_instance (JobID, ActivityTypeID, LabourHours, DiagnosticResult) VALUES (?, ?, ?, ?)'
+                'INSERT INTO activity_instance (JobID, ActivityTypeID, LabourHours, DiagnosticResult, RepeatFault, WarrantyApplicable)
+                 VALUES (?, ?, ?, ?, ?, ?)'
             );
-            $stmt->bind_param('iids', $jobId, $activityTypeId, $labourHours, $diagnosticResult);
+            $stmt->bind_param('iidsii', $jobId, $activityTypeId, $labourHours, $diagnosticResult, $repeatFault, $warrantyApplicable);
 
             if ($stmt->execute()) {
                 $activityId = $stmt->insert_id;
                 $stmt->close();
+                // Labour hours are recorded against this first mechanic
+                // directly; activity_instance.LabourHours above is then
+                // kept in sync with the sum across all assigned mechanics
+                // by trg_activity_worker_hours_after_insert.
                 $assignStmt = $conn->prepare(
-                    'INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES (?, ?)'
+                    'INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES (?, ?, ?)'
                 );
-                $assignStmt->bind_param('is', $activityId, $mechanicId);
+                $assignStmt->bind_param('isd', $activityId, $mechanicId, $labourHours);
                 $message = $assignStmt->execute()
                     ? 'Activity added and mechanic assigned.'
                     : 'Activity created, but mechanic assignment failed.';
@@ -131,6 +138,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $messageIsError = true;
                 $stmt->close();
             }
+        }
+    } elseif ($action === 'add_activity_mechanic') {
+        $activityId = (int) ($_POST['activity_id'] ?? 0);
+        $mechanicId = trim((string) ($_POST['mechanic_id'] ?? ''));
+        $labourHoursRaw = trim((string) ($_POST['labour_hours'] ?? ''));
+
+        if ($activityId <= 0 || $mechanicId === '') {
+            $message = 'Activity and mechanic are required.';
+            $messageIsError = true;
+        } else {
+            $labourHours = $labourHoursRaw !== '' ? (float) $labourHoursRaw : null;
+            $stmt = $conn->prepare(
+                'INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours)
+                 VALUES (?, ?, ?)
+                 ON DUPLICATE KEY UPDATE LabourHours = VALUES(LabourHours)'
+            );
+            $stmt->bind_param('isd', $activityId, $mechanicId, $labourHours);
+            $message = $stmt->execute() ? 'Mechanic added to activity.' : 'Could not add mechanic to activity.';
+            $messageIsError = !$stmt->affected_rows;
+            $stmt->close();
         }
     } elseif ($action === 'record_parts_usage') {
         $activityId = (int) ($_POST['activity_id'] ?? 0);
@@ -272,8 +299,12 @@ while ($row = $openJobResult->fetch_assoc()) {
 $jobActivities = [];
 $jobActivityResult = $conn->query(
     "SELECT ai.ActivityID, ai.JobID, at.ActivityTypeName, ai.LabourHours, ai.DiagnosticResult,
+            ai.RepeatFault, ai.WarrantyApplicable,
             mj.Status AS JobStatus, v.RegistrationNumber,
-            GROUP_CONCAT(DISTINCT mw.FullName ORDER BY mw.FullName SEPARATOR ', ') AS AssignedMechanics,
+            GROUP_CONCAT(
+                DISTINCT CONCAT(mw.FullName, ' (', COALESCE(aiwa.LabourHours, '?'), 'h)')
+                ORDER BY mw.FullName SEPARATOR ', '
+            ) AS AssignedMechanics,
             COUNT(DISTINCT aipu.PartID) AS PartsUsedCount
      FROM activity_instance ai
      JOIN maintenance_job mj ON ai.JobID = mj.JobID
@@ -282,7 +313,8 @@ $jobActivityResult = $conn->query(
      LEFT JOIN activity_instance_worker_assigned aiwa ON aiwa.ActivityID = ai.ActivityID
      LEFT JOIN mechanic_worker mw ON mw.MechanicID = aiwa.MechanicID
      LEFT JOIN activity_instance_part_used aipu ON aipu.ActivityID = ai.ActivityID
-     GROUP BY ai.ActivityID, ai.JobID, at.ActivityTypeName, ai.LabourHours, ai.DiagnosticResult, mj.Status, v.RegistrationNumber
+     GROUP BY ai.ActivityID, ai.JobID, at.ActivityTypeName, ai.LabourHours, ai.DiagnosticResult,
+              ai.RepeatFault, ai.WarrantyApplicable, mj.Status, v.RegistrationNumber
      ORDER BY ai.ActivityID DESC"
 );
 while ($row = $jobActivityResult->fetch_assoc()) {
@@ -712,12 +744,18 @@ $conn->close();
                                 </select>
                             </div>
                             <div class="field-group">
-                                <label for="activity-hours">Est. hours</label>
+                                <label for="activity-hours">Hours (this mechanic)</label>
                                 <input type="number" id="activity-hours" name="labour_hours" min="0" step="0.25" placeholder="Hours">
                             </div>
                             <div class="field-group">
                                 <label for="activity-diagnostic">Diagnostic note</label>
                                 <input type="text" id="activity-diagnostic" name="diagnostic_result" placeholder="Optional">
+                            </div>
+                            <div class="field-group">
+                                <label><input type="checkbox" name="repeat_fault" value="1"> Repeat fault</label>
+                            </div>
+                            <div class="field-group">
+                                <label><input type="checkbox" name="warranty_applicable" value="1"> Warranty applies</label>
                             </div>
                             <button type="submit" class="btn btn-search">Add activity</button>
                         </div>
@@ -732,9 +770,11 @@ $conn->close();
                                 <th scope="col">Job</th>
                                 <th scope="col">Vehicle</th>
                                 <th scope="col">Activity</th>
-                                <th scope="col">Mechanics</th>
-                                <th scope="col">Hours</th>
+                                <th scope="col">Flags</th>
+                                <th scope="col">Mechanics (hours)</th>
+                                <th scope="col">Total hours</th>
                                 <th scope="col">Parts used</th>
+                                <th scope="col">Add mechanic</th>
                                 <th scope="col">Record parts usage</th>
                             </tr>
                         </thead>
@@ -750,9 +790,35 @@ $conn->close();
                                         </td>
                                         <td class="cell-strong"><?php echo escape($activity['RegistrationNumber']); ?></td>
                                         <td><?php echo escape($activity['ActivityTypeName']); ?></td>
+                                        <td>
+                                            <?php if ((int) $activity['RepeatFault'] === 1): ?>
+                                                <span class="status-pill status-critical">Repeat fault</span>
+                                            <?php endif; ?>
+                                            <?php if ((int) $activity['WarrantyApplicable'] === 1): ?>
+                                                <span class="status-pill status-open">Warranty</span>
+                                            <?php endif; ?>
+                                            <?php if ((int) $activity['RepeatFault'] !== 1 && (int) $activity['WarrantyApplicable'] !== 1): ?>
+                                                <span class="empty-row">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?php echo escape($activity['AssignedMechanics'] ?? '—'); ?></td>
                                         <td><?php echo $activity['LabourHours'] !== null ? number_format((float) $activity['LabourHours'], 2) : '—'; ?></td>
                                         <td><?php echo (int) $activity['PartsUsedCount']; ?></td>
+                                        <td class="cell-actions">
+                                            <form method="POST" class="inline-form">
+                                                <input type="hidden" name="action" value="add_activity_mechanic">
+                                                <input type="hidden" name="activity_id" value="<?php echo (int) $activity['ActivityID']; ?>">
+                                                <label class="sr-only" for="add-mech-<?php echo (int) $activity['ActivityID']; ?>">Mechanic</label>
+                                                <select id="add-mech-<?php echo (int) $activity['ActivityID']; ?>" name="mechanic_id" required>
+                                                    <option value="" disabled selected>Mechanic</option>
+                                                    <?php foreach ($allMechanics as $mechanic): ?>
+                                                        <option value="<?php echo escape($mechanic['MechanicID']); ?>"><?php echo escape($mechanic['FullName']); ?></option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                                <input type="number" name="labour_hours" min="0" step="0.25" placeholder="Hours" style="width:5rem;">
+                                                <button type="submit" class="btn btn-search">Add</button>
+                                            </form>
+                                        </td>
                                         <td class="cell-actions">
                                             <form method="POST" class="inline-form">
                                                 <input type="hidden" name="action" value="record_parts_usage">
@@ -778,7 +844,7 @@ $conn->close();
                                     </tr>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <tr><td colspan="7" class="empty-row">No job activities recorded.</td></tr>
+                                <tr><td colspan="9" class="empty-row">No job activities recorded.</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>

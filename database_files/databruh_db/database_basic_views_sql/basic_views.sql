@@ -476,6 +476,45 @@ ORDER BY (p.ReorderThreshold - p.QuantityOnHand) DESC;
 -- part's current PrimarySupplierID, so this stays accurate even after a
 -- part's primary supplier changes.
 -- =====================================================================
+-- =====================================================================
+-- VIEW 21: Coaching / Training Compliance
+--
+-- "A driver with a score of 75 or below must attend driver coaching. A
+-- driver with a safety score of 50 or below cannot be assigned to a
+-- vehicle until they complete safety training." Surfaces this against
+-- each driver's most recent scored month (the assignment-eligibility
+-- trigger in business_rules.sql enforces the <=50 half of this at the
+-- database layer; this view is what lets the fleet manager see it, and
+-- act on the <=75 half, which is a monitoring requirement rather than a
+-- hard block).
+-- =====================================================================
+CREATE OR REPLACE VIEW view_coaching_required AS
+SELECT
+    d.DriverID,
+    d.FullName AS DriverName,
+    dl.DepotName,
+    latest.Year,
+    latest.Month,
+    latest.Score,
+    CASE
+        WHEN latest.Score <= 50 THEN 'Blocked from assignment'
+        WHEN latest.Score <= 75 THEN 'Coaching required'
+        ELSE 'OK'
+    END AS ComplianceStatus
+FROM driver d
+LEFT JOIN depot_location dl ON d.DepotID = dl.DepotID
+JOIN (
+    SELECT msl.DriverID, msl.Year, msl.Month, msl.Score
+    FROM monthly_score_log msl
+    INNER JOIN (
+        SELECT DriverID, MAX(Year * 100 + Month) AS ym
+        FROM monthly_score_log
+        GROUP BY DriverID
+    ) latestym ON latestym.DriverID = msl.DriverID AND (msl.Year * 100 + msl.Month) = latestym.ym
+) latest ON latest.DriverID = d.DriverID
+WHERE latest.Score <= 75
+ORDER BY latest.Score ASC;
+
 CREATE OR REPLACE VIEW view_supplier_performance AS
 SELECT
     pc.PartnerID,

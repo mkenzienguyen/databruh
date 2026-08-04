@@ -69,6 +69,19 @@
     color: #52770b;
 }
 
+.status-blocked-from-assignment,
+.status-critical {
+    color: #b52d20;
+}
+
+.status-coaching-required {
+    color: #9a7000;
+}
+
+.status-ok {
+    color: #52770b;
+}
+
 .cell-actions {
     display: grid;
     gap: 0.6rem;

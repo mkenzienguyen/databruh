@@ -83,21 +83,25 @@ INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, D
 -- 9. Mechanic Activity Assignments (Workload Distribution)
 -- ==========================================
 -- Job M1021: Brake Service (Hoang Van Duc [ME-12] & Pham Thi Lan [ME-15])
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(101, 'ME-12'),
-(101, 'ME-15');
+-- — per-mechanic hours matching the brief's own example table exactly.
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(101, 'ME-12', 2.5),
+(101, 'ME-15', 2.5);
 
 -- Job M1021: Tyre Replacement (Hoang Van Duc [ME-12])
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(102, 'ME-12');
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(102, 'ME-12', 1.0);
 
 -- Job M1022: Preventative Servicing (Nguyen Thi Mai [ME-07])
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(103, 'ME-07');
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(103, 'ME-07', 1.5);
 
 -- Job M1022: Refrigeration Repair (Tran Quoc Bao [ME-09])
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(104, 'ME-09');
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(104, 'ME-09', 2.0);
+
+UPDATE activity_instance SET RepeatFault = TRUE WHERE ActivityID = 102;
+UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 104;
 
 -- ==========================================
 -- 9b. Open Job: Repeat Refrigeration Failure on VEH-002
@@ -108,11 +112,11 @@ INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
 INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, Status, AlertID, TotalCost) VALUES
 (1023, 'VEH-002', 2, '2026-06-01 09:00:00', NULL, 'Open', NULL, NULL);
 
-INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, DiagnosticResult) VALUES
-(105, 1023, 7, 3, 'Recurring refrigeration belt failure - third occurrence, recommend full unit inspection');
+INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, DiagnosticResult, RepeatFault) VALUES
+(105, 1023, 7, 3, 'Recurring refrigeration belt failure - third occurrence, recommend full unit inspection', TRUE);
 
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(105, 'ME-09');
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(105, 'ME-09', 3.0);
 
 -- ==========================================
 -- 10. Maintenance Schedule Rules
@@ -185,12 +189,14 @@ INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, D
 -- ==========================================
 -- Additional Mechanic Activity Assignments
 -- ==========================================
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(106, 'ME-12'),
-(107, 'ME-07'),
-(108, 'ME-09'),
-(109, 'ME-24'),
-(110, 'ME-21'),
-(111, 'ME-21'),
-(112, 'ME-15'),
-(113, 'ME-07');
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(106, 'ME-12', 1.5),
+(107, 'ME-07', 6.0),
+(108, 'ME-09', 2.0),
+(109, 'ME-24', 4.0),
+(110, 'ME-21', 3.5),
+(111, 'ME-21', 1.0),
+(112, 'ME-15', 1.0),
+(113, 'ME-07', 3.0);
+
+UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 110;

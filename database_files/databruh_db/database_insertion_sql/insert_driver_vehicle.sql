@@ -74,10 +74,20 @@ INSERT INTO driver (DriverID, FullName, DepotID, LicenseNumber, LicenseExpiratio
 INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate, ExpiryDate) VALUES
 ('D-112', 1, '2022-02-14', '2027-02-14'), -- Nguyen Van An: Standard Licence
 ('D-112', 4, '2023-04-30', '2027-04-30'), -- Nguyen Van An: EV Certification
+('D-204', 1, '2022-08-01', '2028-08-01'), -- Tran Thi Bich: Standard Licence
 ('D-204', 2, '2022-12-08', '2027-12-08'), -- Tran Thi Bich: Heavy Vehicle Licence
 ('D-204', 3, '2023-05-01', '2028-05-01'), -- Tran Thi Bich: Refrigerated Transport Certification
 ('D-331', 1, '2023-06-21', '2028-06-21'), -- Le Quoc Minh: Standard Licence
-('D-417', 5, '2023-11-18', '2028-11-18'); -- Pham Duc Long: Hazardous Goods Certification
+('D-417', 5, '2023-11-18', '2028-11-18'), -- Pham Duc Long: Hazardous Goods Certification
+-- Pham Duc Long briefly held Standard + EV certification, current when
+-- his VEH-003 (Electric Van) assignment began on 2026-05-20 — required
+-- for trg_vehicle_driver_assignment_before_insert (business_rules.sql)
+-- to accept that historical assignment — but both have since lapsed
+-- without renewal. Still demonstrates view_unauthorized_vehicle_operation
+-- / view_expired_certifications below, just as a "certification drift
+-- after assignment" case rather than "never had it".
+('D-417', 1, '2025-01-01', '2026-06-01'),
+('D-417', 4, '2025-01-01', '2026-06-01');
 
 -- ==========================================
 -- 9. Driver - Vehicle Assignment
@@ -86,21 +96,23 @@ INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate, EndDate) 
 ('VEH-001', 'D-112', '2026-05-01', '2026-05-12'),
 ('VEH-001', 'D-331', '2026-05-13', NULL),
 ('VEH-002', 'D-204', '2026-05-01', NULL),
--- D-417 only holds Hazardous Goods Certification (5), not the Standard (1)
--- or EV (4) certifications VEH-003's Electric Van classification requires —
--- demonstrates view_unauthorized_vehicle_operation below.
 ('VEH-003', 'D-417', '2026-05-20', NULL);
 
 -- ==========================================
 -- 10. Vehicle Type Certification Requirements
 -- ==========================================
+-- Matches the brief's Vehicle Certification Matrix exactly (ALL listed
+-- certifications are required, not just some of them).
 INSERT INTO vehicle_type_certification_requirement (ClassificationID, CertificationTypeID) VALUES
 (1, 1), -- Delivery Van requires Standard Licence
+(2, 1), -- Refrigerated Truck also requires Standard Licence
 (2, 2), -- Refrigerated Truck requires Heavy Vehicle Licence
 (2, 3), -- Refrigerated Truck also requires Refrigerated Transport Certification
 (3, 1), -- Electric Van requires Standard Licence
 (3, 4), -- Electric Van also requires EV Certification
-(5, 2); -- Heavy Transport Truck requires Heavy Vehicle Licence;
+(4, 1), -- Service Vehicle requires Standard Licence
+(5, 2), -- Heavy Transport Truck requires Heavy Vehicle Licence
+(5, 5); -- Heavy Transport Truck also requires Hazardous Goods Certification
 
 -- ==========================================
 -- 11. Behaviour Events
@@ -116,16 +128,10 @@ INSERT INTO behaviour_event (EventID, VehicleID, DriverID, DepotID, Timestamp, S
 (96, 'VEH-002', 'D-204', 2, '2026-05-13 18:05:00', 4, 'Speeding', 'Odometer: 112,480'),
 (97, 'VEH-001', 'D-112', 1, '2026-05-15 10:05:00', 2, 'Speeding', 'Odometer: 45,410, second speeding event this week');
 
--- ==========================================
--- 12. Monthly Score Log
--- ==========================================
-INSERT INTO monthly_score_log (DriverID, Month, Year, Score) VALUES
-('D-112', 4, 2026, 95),  -- Nguyen Van An (April performance)
-('D-112', 5, 2026, 88),  -- Nguyen Van An (May performance drops due to telematics alerts)
-('D-204', 4, 2026, 100), -- Tran Thi Bich (Perfect safety record)
-('D-204', 5, 2026, 92),  -- Tran Thi Bich (Minor penalty for sharp cornering)
-('D-331', 5, 2026, 98),  -- Le Quoc Minh (Clean record since joining May assignment)
-('D-417', 5, 2026, 100); -- Pham Duc Long (Flawless score)
+-- Monthly safety scores are no longer hand-entered here: they are
+-- computed from the behaviour_event rows above by
+-- trg_behaviour_event_score_after_insert (see business_rules.sql, which
+-- must be imported before this file).
 
 -- ==========================================
 -- 13. Coaching Log
@@ -171,9 +177,14 @@ INSERT INTO driver (DriverID, FullName, DepotID, LicenseNumber, LicenseExpiratio
 -- expires the same day as their driving licence - both feed
 -- view_expired_certifications.
 INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate, ExpiryDate) VALUES
-('D-528', 1, '2020-05-01', '2026-06-01'),  -- Vo Thi Hoa: Standard Licence, EXPIRED
+('D-528', 1, '2020-05-01', '2026-06-01'),  -- Vo Thi Hoa: Standard Licence, EXPIRED (was valid when her VEH-006 assignment began 2026-04-01)
 ('D-604', 1, '2022-01-10', '2028-01-10'),  -- Dang Van Kiet: Standard Licence
-('D-604', 2, '2022-06-15', '2028-06-15'),  -- Dang Van Kiet: Heavy Vehicle Licence (no Refrigerated cert)
+('D-604', 2, '2022-06-15', '2028-06-15'),  -- Dang Van Kiet: Heavy Vehicle Licence
+-- Dang Van Kiet briefly held Refrigerated Transport Certification,
+-- current when his VEH-005 assignment began on 2026-03-01, but it has
+-- since lapsed without renewal — a second view_unauthorized_vehicle_operation
+-- / view_expired_certifications case alongside D-417/VEH-003.
+('D-604', 3, '2025-01-01', '2026-06-01'),
 ('D-715', 1, '2023-02-01', '2029-02-01'),  -- Bui Thi Ngoc: Standard Licence
 ('D-823', 1, '2021-07-01', '2026-07-01'),  -- Ho Van Phuc: Standard Licence, EXPIRED
 ('D-823', 4, '2022-03-01', '2028-03-01'),  -- Ho Van Phuc: EV Certification
@@ -184,9 +195,9 @@ INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate
 -- ==========================================
 -- Additional Vehicle - Driver Assignments
 -- ==========================================
--- D-604 holds Standard + Heavy Vehicle certs but not the Refrigerated
--- Transport cert VEH-005's classification also requires - a second
--- view_unauthorized_vehicle_operation case alongside D-417/VEH-003.
+-- Each of these passes trg_vehicle_driver_assignment_before_insert as of
+-- its StartDate above; certifications shown expired lapsed *after* the
+-- assignment began, which the trigger's historical check allows.
 INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate, EndDate) VALUES
 ('VEH-004', 'D-715', '2026-02-01', NULL),
 ('VEH-005', 'D-604', '2026-03-01', NULL),
@@ -216,50 +227,11 @@ INSERT INTO behaviour_event (EventID, VehicleID, DriverID, DepotID, Timestamp, S
 (114, 'VEH-002', 'D-204', 2, '2026-08-01 07:50:00', 3, 'Tailgating',        'Odometer: 111,200'),
 (115, 'VEH-004', 'D-715', 1, '2026-08-03 16:00:00', 1, 'Harsh Braking',     'Odometer: 19,200');
 
--- ==========================================
--- Additional Monthly Score Log
--- ==========================================
-INSERT INTO monthly_score_log (DriverID, Month, Year, Score) VALUES
--- D-112: declining trend through the year
-('D-112', 2, 2026, 96),
-('D-112', 3, 2026, 94),
-('D-112', 6, 2026, 85),
-('D-112', 7, 2026, 80),
-('D-112', 8, 2026, 78),
--- D-204: declining trend
-('D-204', 2, 2026, 98),
-('D-204', 3, 2026, 97),
-('D-204', 6, 2026, 90),
-('D-204', 7, 2026, 85),
-('D-204', 8, 2026, 82),
--- D-331: stable, clean record
-('D-331', 3, 2026, 99),
-('D-331', 4, 2026, 97),
-('D-331', 6, 2026, 96),
-('D-331', 7, 2026, 95),
-('D-331', 8, 2026, 94),
--- D-417: stable, clean record
-('D-417', 6, 2026, 99),
-('D-417', 7, 2026, 97),
-('D-417', 8, 2026, 96),
--- D-604: sharp decline tied to repeated speeding
-('D-604', 3, 2026, 90),
-('D-604', 4, 2026, 82),
-('D-604', 5, 2026, 75),
-('D-604', 6, 2026, 70),
-('D-604', 7, 2026, 65),
--- D-715: mild decline
-('D-715', 2, 2026, 95),
-('D-715', 3, 2026, 93),
-('D-715', 4, 2026, 94),
-('D-715', 6, 2026, 91),
-('D-715', 7, 2026, 90),
-('D-715', 8, 2026, 88),
--- D-528 and D-823: light history
-('D-528', 4, 2026, 96),
-('D-528', 5, 2026, 95),
-('D-823', 5, 2026, 99),
-('D-823', 6, 2026, 98);
+-- Additional monthly scores are no longer hand-entered: they are
+-- computed automatically from the behaviour_event rows above.
+-- Run `CALL sp_recalculate_all_monthly_scores();` after loading
+-- behaviour_event data if you ever load it without the triggers active
+-- (e.g. restoring a dump taken before business_rules.sql existed).
 
 -- ==========================================
 -- Additional Coaching Log
