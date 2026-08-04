@@ -9,6 +9,7 @@ if (!isset($_SESSION['AccountID'])) {
 }
 
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/password_policy.php';
 
 function escape(string $value): string
 {
@@ -73,6 +74,11 @@ $_SESSION['Email'] = $account['Email'];
 $_SESSION['TypeID'] = $account['TypeID'];
 $_SESSION['LinkedID'] = $account['LinkedID'];
 
+$accountPasswordPolicyJson = passwordPolicyClientConfigJson(
+    (string) $account['FullName'],
+    (string) $account['Email']
+);
+
 if (empty($_SESSION['account_csrf_token'])) {
     $_SESSION['account_csrf_token'] = bin2hex(random_bytes(32));
 }
@@ -102,16 +108,15 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         $errors[] = 'Complete all three password fields.';
     }
 
-    if ($newPassword !== '' && (strlen($newPassword) < 8 || strlen($newPassword) > 128)) {
-        $errors[] = 'Use a new password between 8 and 128 characters.';
-    }
-
-    if ($newPassword !== '' && !preg_match('/[A-Za-z]/', $newPassword)) {
-        $errors[] = 'Add at least one letter to the new password.';
-    }
-
-    if ($newPassword !== '' && !preg_match('/[0-9]/', $newPassword)) {
-        $errors[] = 'Add at least one number to the new password.';
+    if ($newPassword !== '') {
+        $errors = array_merge(
+            $errors,
+            passwordPolicyErrors(
+                $newPassword,
+                (string) $account['FullName'],
+                (string) $account['Email']
+            )
+        );
     }
 
     if ($newPassword !== $confirmPassword) {
@@ -419,8 +424,9 @@ $conn->close();
                         <p class="card-caption">Before you update</p>
                         <h3>A stronger password starts with distance.</h3>
                         <ul>
-                            <li>Use at least eight characters.</li>
-                            <li>Include both letters and numbers.</li>
+                            <li>Use a unique passphrase with at least 15 characters.</li>
+                            <li>Include mixed case, at least one number, and one symbol.</li>
+                            <li>Avoid common passwords, personal details, and Databruh.</li>
                             <li>Do not reuse your current password.</li>
                         </ul>
                     </article>
@@ -497,8 +503,8 @@ $conn->close();
                                         aria-describedby="password-guidance password-strength"
                                         data-password-input="password-strength"
                                         required
-                                        minlength="8"
-                                        maxlength="128"
+                                        minlength="<?php echo DATABRUH_PASSWORD_MIN_LENGTH; ?>"
+                                        maxlength="<?php echo DATABRUH_PASSWORD_MAX_LENGTH; ?>"
                                     >
                                     <button
                                         class="password-toggle"
@@ -511,19 +517,21 @@ $conn->close();
                                     </button>
                                 </div>
                                 <p id="password-guidance" class="field-guidance">
-                                    Use 8-128 characters with at least one letter and one number.
+                                    Use 15–128 characters with mixed case, a number, and a symbol.
+                                    Spaces and Unicode characters are allowed.
                                 </p>
                                 <div
                                     id="password-strength"
                                     class="password-strength"
                                     data-score="0"
+                                    data-password-policy="<?php echo escape($accountPasswordPolicyJson); ?>"
                                     role="status"
                                     aria-live="polite"
                                 >
                                     <span
                                         class="password-strength-track"
                                         role="meter"
-                                        aria-label="New password strength"
+                                        aria-label="New password requirement progress"
                                         aria-valuemin="0"
                                         aria-valuemax="4"
                                         aria-valuenow="0"
@@ -531,9 +539,15 @@ $conn->close();
                                         <span class="password-strength-fill" data-strength-fill></span>
                                     </span>
                                     <span class="password-strength-meta">
-                                        <span data-strength-copy>Password strength will appear here</span>
-                                        <span data-strength-count>0/4 checks</span>
+                                        <span data-strength-copy>Complete all four requirements</span>
+                                        <span data-strength-count>0/4 requirements</span>
                                     </span>
+                                    <ul class="password-requirements" aria-label="Password requirements">
+                                        <li data-password-check="validLength">15–128 printable characters</li>
+                                        <li data-password-check="mixedCase">Uppercase and lowercase letters</li>
+                                        <li data-password-check="numberAndSymbol">At least one number and one symbol</li>
+                                        <li data-password-check="safeChoice">Not common, personal, or Databruh-based</li>
+                                    </ul>
                                 </div>
                             </div>
 
@@ -544,10 +558,10 @@ $conn->close();
                                         type="password"
                                         id="confirm_password"
                                         name="confirm_password"
-                                        autocomplete="new-password"
-                                        required
-                                        minlength="8"
-                                        maxlength="128"
+                                    autocomplete="new-password"
+                                    required
+                                    minlength="<?php echo DATABRUH_PASSWORD_MIN_LENGTH; ?>"
+                                    maxlength="<?php echo DATABRUH_PASSWORD_MAX_LENGTH; ?>"
                                     >
                                     <button
                                         class="password-toggle"

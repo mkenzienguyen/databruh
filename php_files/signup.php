@@ -1,6 +1,9 @@
 <?php
 session_start();
 require_once __DIR__ . '/includes/layout.php';
+require_once __DIR__ . '/includes/password_policy.php';
+
+$signupPasswordPolicyJson = passwordPolicyClientConfigJson();
 
 $passwordConn = new mysqli('localhost', 'root', '', 'databruh_password_db');
 if ($passwordConn->connect_error) {
@@ -207,9 +210,11 @@ $fleetConn->close();
                                     id="password"
                                     name="password"
                                     autocomplete="new-password"
-                                    aria-describedby="signup-password-strength"
+                                    aria-describedby="signup-password-guidance signup-password-strength"
                                     data-password-input="signup-password-strength"
                                     required
+                                    minlength="<?php echo DATABRUH_PASSWORD_MIN_LENGTH; ?>"
+                                    maxlength="<?php echo DATABRUH_PASSWORD_MAX_LENGTH; ?>"
                                 >
                                 <button
                                     class="password-toggle"
@@ -221,17 +226,24 @@ $fleetConn->close();
                                     Show
                                 </button>
                             </div>
+                            <p id="signup-password-guidance" class="field-guidance">
+                                Use 15–128 characters with mixed case, a number, and a symbol.
+                                Spaces and Unicode characters are allowed.
+                            </p>
                             <div
                                 id="signup-password-strength"
                                 class="password-strength"
                                 data-score="0"
+                                data-password-policy="<?php echo htmlspecialchars($signupPasswordPolicyJson, ENT_QUOTES, 'UTF-8'); ?>"
+                                data-password-name-input="fullname"
+                                data-password-email-input="email"
                                 role="status"
                                 aria-live="polite"
                             >
                                 <span
                                     class="password-strength-track"
                                     role="meter"
-                                    aria-label="Password strength"
+                                    aria-label="Password requirement progress"
                                     aria-valuemin="0"
                                     aria-valuemax="4"
                                     aria-valuenow="0"
@@ -239,9 +251,15 @@ $fleetConn->close();
                                     <span class="password-strength-fill" data-strength-fill></span>
                                 </span>
                                 <span class="password-strength-meta">
-                                    <span data-strength-copy>Strength appears as you type</span>
-                                    <span data-strength-count>0/4 checks</span>
+                                    <span data-strength-copy>Complete all four requirements</span>
+                                    <span data-strength-count>0/4 requirements</span>
                                 </span>
+                                <ul class="password-requirements" aria-label="Password requirements">
+                                    <li data-password-check="validLength">15–128 printable characters</li>
+                                    <li data-password-check="mixedCase">Uppercase and lowercase letters</li>
+                                    <li data-password-check="numberAndSymbol">At least one number and one symbol</li>
+                                    <li data-password-check="safeChoice">Not common, personal, or Databruh-based</li>
+                                </ul>
                             </div>
                         </div>
 
@@ -254,6 +272,8 @@ $fleetConn->close();
                                     name="confirm_password"
                                     autocomplete="new-password"
                                     required
+                                    minlength="<?php echo DATABRUH_PASSWORD_MIN_LENGTH; ?>"
+                                    maxlength="<?php echo DATABRUH_PASSWORD_MAX_LENGTH; ?>"
                                 >
                                 <button
                                     class="password-toggle"

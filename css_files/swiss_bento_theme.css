@@ -1182,6 +1182,43 @@ body::before {
     letter-spacing: 0.02em;
 }
 
+.password-requirements {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 1rem;
+    margin: 0.2rem 0 0;
+    padding: 0.8rem 0 0;
+    border-top: 1px solid var(--border);
+    list-style: none;
+}
+
+.password-requirements li {
+    position: relative;
+    padding-left: 1.25rem;
+    color: var(--muted);
+    line-height: 1.4;
+    transition: color 180ms ease;
+}
+
+.password-requirements li::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    color: var(--signal);
+    content: "○";
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    font-weight: 700;
+}
+
+.password-requirements li.is-met {
+    color: var(--ink);
+}
+
+.password-requirements li.is-met::before {
+    color: var(--sage);
+    content: "✓";
+}
+
 .auth-proof-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -2547,6 +2584,10 @@ body::before {
         align-items: flex-start;
         flex-direction: column;
         gap: 0.25rem;
+    }
+
+    .password-requirements {
+        grid-template-columns: 1fr;
     }
 
     .dashboard-metrics {
