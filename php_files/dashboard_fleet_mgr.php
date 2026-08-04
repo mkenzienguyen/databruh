@@ -10,6 +10,11 @@ function escape(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function statusSlug(string $status): string
+{
+    return strtolower(str_replace(' ', '-', trim($status)));
+}
+
 $conn = new mysqli('localhost', 'root', '', 'databruh_db');
 if ($conn->connect_error) {
     http_response_code(503);
@@ -214,6 +219,12 @@ while ($row = $depotResult->fetch_assoc()) {
     $depotValues[] = (int) $row['EventCount'];
 }
 
+$scoreAnomalies = [];
+$anomalyResult = $conn->query('SELECT * FROM view_driver_score_anomalies');
+while ($row = $anomalyResult->fetch_assoc()) {
+    $scoreAnomalies[] = $row;
+}
+
 $conn->close();
 ?>
 <!DOCTYPE html>
@@ -343,6 +354,58 @@ $conn->close();
                             <canvas id="depotChart" role="img" aria-label="Bar chart of incidents by depot."></canvas>
                         </div>
                     </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="admin-directory" aria-labelledby="anomaly-title">
+            <div class="section-shell">
+                <div class="chapter-heading">
+                    <div>
+                        <span class="section-kicker">Statistical anomaly detection</span>
+                        <h2 id="anomaly-title">Score drops vs. each driver's own baseline.</h2>
+                    </div>
+                    <p>
+                        Each driver's monthly score is compared against their own
+                        historical mean and standard deviation (Z-score), not a
+                        fleet-wide threshold. Flags a driver only when this month
+                        is a statistical outlier for <em>them</em>.
+                    </p>
+                </div>
+                <div class="admin-table-shell" data-reveal data-stack-card>
+                    <table class="admin-table">
+                        <caption class="sr-only">Driver monthly score anomalies</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Driver</th>
+                                <th scope="col">Month</th>
+                                <th scope="col">Score</th>
+                                <th scope="col">Driver average</th>
+                                <th scope="col">Z-score</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if ($scoreAnomalies): ?>
+                                <?php foreach ($scoreAnomalies as $row): ?>
+                                    <tr>
+                                        <td class="cell-strong"><?php echo escape($row['DriverName']); ?></td>
+                                        <td><?php echo str_pad((string) $row['Month'], 2, '0', STR_PAD_LEFT) . '/' . $row['Year']; ?></td>
+                                        <td><?php echo (int) $row['Score']; ?></td>
+                                        <td><?php echo $row['DriverAvgScore'] !== null ? escape((string) $row['DriverAvgScore']) : '—'; ?></td>
+                                        <td><?php echo $row['ZScore'] !== null ? escape((string) $row['ZScore']) : '—'; ?></td>
+                                        <td>
+                                            <span class="status-pill status-<?php echo statusSlug($row['AnomalyStatus']); ?>">
+                                                <?php echo escape($row['AnomalyStatus']); ?>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr><td colspan="6" class="empty-row">No monthly scores recorded.</td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </section>

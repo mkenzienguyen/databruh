@@ -20,7 +20,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $confirm_pass = $_POST['confirm_password'];
     $typeID = trim((string) ($_POST['type_id'] ?? ''));
 
-    $allowedRoles = ['FLEET_MGR', 'WS_MGR', 'MECHANIC', 'DRIVER'];
+    // Self-signup is limited to DRIVER and MECHANIC. FLEET_MGR and WS_MGR
+    // carry elevated access and can only be granted by an administrator
+    // via admin_page.php, never claimed at signup.
+    $allowedRoles = ['MECHANIC', 'DRIVER'];
 
     if (empty($fullname) || empty($email) || empty($pass) || empty($confirm_pass) || $typeID === '') {
         die("All fields are required. <a href='signup.php'>Go back</a>");
@@ -38,50 +41,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         die("Passwords do not match. <a href='signup.php'>Go back</a>");
     }
 
+    // New accounts start unlinked. Only an administrator can attach an
+    // account to a specific driver/mechanic operational record, so a new
+    // signup can't self-select someone else's identity.
     $linkedId = null;
-
-    if ($typeID === 'DRIVER' || $typeID === 'MECHANIC') {
-        $linkedIdField = $typeID === 'DRIVER' ? 'linked_id_driver' : 'linked_id_mechanic';
-        $linkedId = trim((string) ($_POST[$linkedIdField] ?? ''));
-
-        if ($linkedId === '') {
-            die("Select your operational record to continue. <a href='signup.php'>Go back</a>");
-        }
-
-        $fleetConn = new mysqli($host, $username, $password, 'databruh_db');
-        if ($fleetConn->connect_error) {
-            die("Database connection failed: " . $fleetConn->connect_error);
-        }
-
-        $lookupTable = $typeID === 'DRIVER' ? 'driver' : 'mechanic_worker';
-        $lookupColumn = $typeID === 'DRIVER' ? 'DriverID' : 'MechanicID';
-
-        $lookupStmt = $fleetConn->prepare("SELECT 1 FROM {$lookupTable} WHERE {$lookupColumn} = ?");
-        $lookupStmt->bind_param("s", $linkedId);
-        $lookupStmt->execute();
-        $lookupStmt->store_result();
-
-        if ($lookupStmt->num_rows === 0) {
-            $lookupStmt->close();
-            $fleetConn->close();
-            die("The selected operational record could not be found. <a href='signup.php'>Go back</a>");
-        }
-
-        $lookupStmt->close();
-        $fleetConn->close();
-
-        $claimStmt = $conn->prepare("SELECT AccountID FROM account WHERE LinkedID = ?");
-        $claimStmt->bind_param("s", $linkedId);
-        $claimStmt->execute();
-        $claimStmt->store_result();
-
-        if ($claimStmt->num_rows > 0) {
-            $claimStmt->close();
-            die("That operational record is already linked to another account. <a href='signup.php'>Go back</a>");
-        }
-
-        $claimStmt->close();
-    }
 
     $check_stmt = $conn->prepare("SELECT AccountID FROM account WHERE Email = ?");
     $check_stmt->bind_param("s", $email);
