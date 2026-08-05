@@ -37,20 +37,12 @@ $jobs = get_options($conn, "SELECT mj.JobID, v.RegistrationNumber, w.WorkshopNam
 $parts = get_options($conn, "SELECT p.PartID, p.PartName, pc.PartnerName AS Supplier
     FROM part p JOIN partner_company pc ON p.PrimarySupplierID = pc.PartnerID
     ORDER BY p.PartName");
-$recentEvents = get_options($conn, "SELECT EventID, Timestamp, VehicleID, EventType FROM behaviour_event ORDER BY Timestamp DESC LIMIT 50");
-// ---- Review comments per event (for the Safety events table) ----
-$reviewRows = get_options($conn, "SELECT EventID, ReviewerName, Comment FROM incident_review ORDER BY ReviewID");
-$reviewsByEvent = [];
-foreach ($reviewRows as $review) {
-    $reviewsByEvent[(int) $review['EventID']][] = $review;
-}
 // ---- Form options ----
 $classifications = get_options($conn, "SELECT ClassificationID, ClassificationName FROM vehicle_classification");
 $depots          = get_options($conn, "SELECT DepotID, DepotName FROM depot_location");
 $workshops       = get_options($conn, "SELECT WorkshopID, WorkshopName FROM workshop");
 $activityTypes   = get_options($conn, "SELECT ActivityTypeID, ActivityTypeName FROM activity_type");
 $statuses        = get_options($conn, "SELECT StatusID, StatusName FROM vehicle_status");
-$severities      = get_options($conn, "SELECT SeverityID, LevelName FROM severity_level");
 $suppliers       = get_options($conn, "SELECT PartnerID, PartnerName FROM partner_company");
 $alerts          = get_options($conn, "SELECT AlertID, AlertName FROM alert WHERE Status != 'Resolved'");
 $conn->close();
@@ -61,8 +53,6 @@ if (isset($_GET['vehicle_added']))  { $notices[] = 'Vehicle added successfully' 
 if (isset($_GET['part_added']))     { $notices[] = 'Part added successfully.'; }
 if (isset($_GET['job_added']))      { $notices[] = 'Maintenance job #' . ($_GET['job_id'] ?? '') . ' created.'; }
 if (isset($_GET['status_updated'])) { $notices[] = 'Vehicle status updated.'; }
-if (isset($_GET['event_added']))    { $notices[] = 'Behavior event recorded.'; }
-if (isset($_GET['review_added']))   { $notices[] = 'Review comment added.'; }
 if (isset($_GET['vehicle_deleted'])){ $notices[] = 'Vehicle removed.'; }
 if (isset($_GET['driver_deleted'])) { $notices[] = 'Driver removed.'; }
 if (isset($_GET['job_deleted']))    { $notices[] = 'Draft maintenance job deleted.'; }
@@ -271,112 +261,6 @@ onsubmit="return confirm('Remove this vehicle? Its history will be kept, but it 
 </div>
 <div class="field-group"><label for="v-odo">Current odometer (km)</label><input id="v-odo" type="number" name="current_odometer" value="0" min="0"></div>
 <button type="submit" class="btn btn-search">Add Vehicle</button>
-</div>
-</form>
-</div>
-</section>
-<section class="admin-directory" aria-labelledby="safety-title">
-<div class="section-shell">
-<div class="chapter-heading">
-<div>
-<span class="section-kicker">Safety events</span>
-<h2 id="safety-title">Record events and coaching.</h2>
-</div>
-</div>
-<div class="admin-table-shell" data-reveal data-stack-card>
-<table class="admin-table">
-<caption class="sr-only">Recent behaviour events with review comments</caption>
-<thead>
-<tr>
-<th scope="col">Event</th>
-<th scope="col">Vehicle</th>
-<th scope="col">Timestamp</th>
-<th scope="col">Reviews / coaching notes</th>
-</tr>
-</thead>
-<tbody>
-<?php if ($recentEvents): ?>
-<?php foreach ($recentEvents as $event): ?>
-<tr>
-<td class="cell-strong">#<?php echo (int) $event['EventID']; ?> - <?php echo escape($event['EventType']); ?></td>
-<td><?php echo escape($event['VehicleID']); ?></td>
-<td><?php echo escape($event['Timestamp']); ?></td>
-<td>
-<?php $eventReviews = $reviewsByEvent[(int) $event['EventID']] ?? []; ?>
-<?php if ($eventReviews): ?>
-<?php foreach ($eventReviews as $review): ?>
-<div class="description-cell" style="margin-bottom:0.35rem;">
-<strong><?php echo escape($review['ReviewerName'] !== '' ? $review['ReviewerName'] : 'Reviewer'); ?>:</strong>
-<?php echo escape($review['Comment']); ?>
-</div>
-<?php endforeach; ?>
-<?php else: ?>
-<span class="empty-row">— no reviews yet —</span>
-<?php endif; ?>
-</td>
-</tr>
-<?php endforeach; ?>
-<?php else: ?>
-<tr><td colspan="4" class="empty-row">No behaviour events recorded.</td></tr>
-<?php endif; ?>
-</tbody>
-</table>
-</div>
-<form method="POST" action="incidents_process.php?action=add_event" class="directory-toolbar" data-reveal data-stack-card
-onsubmit="this.timestamp.value = this.timestamp.value.replace('T', ' ') + ':00';">
-<div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
-<div class="field-group"><label for="e-vehicle">Vehicle</label>
-<select id="e-vehicle" name="vehicle_id" required>
-<?php foreach ($vehicles as $v): ?>
-<option value="<?php echo escape($v['VehicleID']); ?>"><?php echo escape($v['RegistrationNumber']); ?> (<?php echo escape($v['VehicleID']); ?>)</option>
-<?php endforeach; ?>
-</select>
-</div>
-<div class="field-group"><label for="e-driver">Driver (optional)</label>
-<select id="e-driver" name="driver_id">
-<option value="">-- unknown/none --</option>
-<?php foreach ($drivers as $d): ?>
-<option value="<?php echo escape($d['DriverID']); ?>"><?php echo escape($d['FullName']); ?> (<?php echo escape($d['DriverID']); ?>)</option>
-<?php endforeach; ?>
-</select>
-</div>
-<div class="field-group"><label for="e-depot">Depot (optional)</label>
-<select id="e-depot" name="depot_id">
-<option value="">-- none --</option>
-<?php foreach ($depots as $d): ?>
-<option value="<?php echo (int) $d['DepotID']; ?>"><?php echo escape($d['DepotName']); ?></option>
-<?php endforeach; ?>
-</select>
-</div>
-<div class="field-group"><label for="event-timestamp">Timestamp</label><input id="event-timestamp" type="datetime-local" name="timestamp" required></div>
-<div class="field-group"><button type="button" class="btn btn-secondary" onclick="setNow('event-timestamp')">Use now</button></div>
-<div class="field-group"><label for="e-sev">Severity</label>
-<select id="e-sev" name="severity_id">
-<option value="">-- none --</option>
-<?php foreach ($severities as $s): ?>
-<option value="<?php echo (int) $s['SeverityID']; ?>"><?php echo escape($s['LevelName']); ?></option>
-<?php endforeach; ?>
-</select>
-</div>
-<div class="field-group"><label for="e-type">Event type</label><input id="e-type" type="text" name="event_type" placeholder="Speeding" required></div>
-<div class="field-group"><label for="e-desc">Description</label><input id="e-desc" type="text" name="description"></div>
-<button type="submit" class="btn btn-search">Record Event</button>
-</div>
-</form>
-<form method="POST" action="incidents_process.php?action=add_review" class="directory-toolbar" data-reveal data-stack-card>
-<div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
-<div class="field-group"><label for="r-event">Incident</label>
-<select id="r-event" name="event_id" required>
-<?php foreach ($recentEvents as $e): ?>
-<option value="<?php echo (int) $e['EventID']; ?>">
-#<?php echo (int) $e['EventID']; ?> - <?php echo escape($e['EventType']); ?> - <?php echo escape($e['VehicleID']); ?> (<?php echo escape($e['Timestamp']); ?>)
-</option>
-<?php endforeach; ?>
-</select>
-</div>
-<div class="field-group"><label for="r-name">Reviewer name</label><input id="r-name" type="text" name="reviewer_name"></div>
-<div class="field-group"><label for="r-comment">Comment / coaching recommendation</label><input id="r-comment" type="text" name="comment" required></div>
-<button type="submit" class="btn btn-search">Add Comment</button>
 </div>
 </form>
 </div>
