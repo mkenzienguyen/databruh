@@ -1,37 +1,5 @@
 USE databruh_db;
 
--- Enforces at the DB layer: no assignment to a vehicle Under
--- Maintenance/Out of Service; driver must hold required, unexpired
--- certifications; driver safety score must be above 50; no unresolved
--- critical event. Also computes monthly_score_log from behaviour_event
--- instead of hand-entry. Safe to re-run.
-
--- ---------------------------------------------------------------------
--- 1. Schema additions
--- ---------------------------------------------------------------------
-
--- One workshop per depot.
-ALTER TABLE workshop
-    ADD UNIQUE INDEX IF NOT EXISTS uq_workshop_depot (DepotID);
-
-ALTER TABLE activity_instance
-    ADD COLUMN IF NOT EXISTS RepeatFault BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS WarrantyApplicable BOOLEAN NOT NULL DEFAULT FALSE;
-
--- Labour hours per mechanic per activity, not one total per activity.
--- activity_instance.LabourHours is kept in sync as the sum (trigger below).
-ALTER TABLE activity_instance_worker_assigned
-    ADD COLUMN IF NOT EXISTS LabourHours DECIMAL(4,2) NULL;
-
-UPDATE activity_instance_worker_assigned aiwa
-JOIN activity_instance ai ON aiwa.ActivityID = ai.ActivityID
-SET aiwa.LabourHours = ai.LabourHours
-WHERE aiwa.LabourHours IS NULL;
-
--- ---------------------------------------------------------------------
--- 2. Keep activity_instance.LabourHours in sync with per-mechanic hours
--- ---------------------------------------------------------------------
-
 DELIMITER $$
 
 DROP TRIGGER IF EXISTS trg_activity_worker_hours_after_insert$$
@@ -69,19 +37,6 @@ BEGIN
     )
     WHERE ActivityID = OLD.ActivityID;
 END$$
-
-DELIMITER ;
-
--- ---------------------------------------------------------------------
--- 3. Monthly safety score, computed from behaviour_event.
--- Base 100, minus per-event penalties (Low -2, Medium -5, High -10,
--- Critical -20), minus flat deductions (>3 speeding: -10, >2 fatigue
--- warnings: -15, any critical event: -10 more). Clamped to [0, 100].
--- sp_recalculate_all_monthly_scores rebuilds every driver/month; useful
--- for backfilling after loading historical event data.
--- ---------------------------------------------------------------------
-
-DELIMITER $$
 
 DROP PROCEDURE IF EXISTS sp_recalculate_driver_month_score$$
 CREATE PROCEDURE sp_recalculate_driver_month_score(
@@ -192,19 +147,6 @@ BEGIN
     END IF;
 END$$
 
-DELIMITER ;
-
--- ---------------------------------------------------------------------
--- 4. Assignment eligibility enforcement.
--- Raises SIGNAL SQLSTATE '45000' on the first rule violated (mysqli
--- surfaces this as a mysqli_sql_exception). Certification/score checks
--- use the assignment's StartDate, not today, so historical assignments
--- stay valid even if a cert has since lapsed. Vehicle status uses its
--- current value only (no status history tracked).
--- ---------------------------------------------------------------------
-
-DELIMITER $$
-
 DROP PROCEDURE IF EXISTS sp_check_assignment_eligibility$$
 CREATE PROCEDURE sp_check_assignment_eligibility(
     IN p_vehicle VARCHAR(50), IN p_driver VARCHAR(50), IN p_start_date DATE
@@ -247,7 +189,6 @@ BEGIN
             SET MESSAGE_TEXT = 'Driver is missing a required, unexpired certification for this vehicle category.';
     END IF;
 
-    -- No score history yet skips this check rather than blocking.
     SELECT msl.Score INTO v_score
     FROM monthly_score_log msl
     WHERE msl.DriverID = p_driver
@@ -285,7 +226,6 @@ BEGIN
     CALL sp_check_assignment_eligibility(NEW.VehicleID, NEW.DriverID, NEW.StartDate);
 END$$
 
--- Only re-checked when (re)activating an assignment; ending one (setting EndDate) never trips this.
 DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update$$
 CREATE TRIGGER trg_vehicle_driver_assignment_before_update
 BEFORE UPDATE ON vehicle_driver_assignment
