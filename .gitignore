@@ -1,0 +1,14 @@
+# Generated benchmark data (tools/generate_mock_data.py).
+# The generator is committed; its output is not -- regenerate with:
+#   python3 tools/generate_mock_data.py -o mock_data.sql
+mock_data.sql
+*.mock.sql
+
+# macOS Finder metadata
+.DS_Store
+**/.DS_Store
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
