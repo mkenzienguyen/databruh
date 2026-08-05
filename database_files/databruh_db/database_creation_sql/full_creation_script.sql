@@ -1,12 +1,11 @@
-DROP DATABASE databruh_db;
+DROP DATABASE IF EXISTS databruh_db;
 CREATE DATABASE databruh_db;
 USE databruh_db;
-
 
 CREATE TABLE depot_location (
     DepotID INT AUTO_INCREMENT PRIMARY KEY,
     DepotName VARCHAR(255) NOT NULL,
-    DepotAddress VARCHAR(255)   
+    DepotAddress VARCHAR(255)
 );
 
 CREATE TABLE vehicle_status (
@@ -18,7 +17,6 @@ CREATE TABLE vehicle_classification (
     ClassificationID INT AUTO_INCREMENT PRIMARY KEY,
     ClassificationName VARCHAR(255) NOT NULL
 );
-
 
 CREATE TABLE vehicle_certification_type (
     CertificationTypeID INT AUTO_INCREMENT PRIMARY KEY,
@@ -60,7 +58,6 @@ CREATE TABLE driver (
     FOREIGN KEY (DepotID) REFERENCES depot_location(DepotID) ON DELETE SET NULL
 );
 
-
 CREATE TABLE vehicle_driver_assignment (
     AssignmentID INT AUTO_INCREMENT PRIMARY KEY,
     VehicleID VARCHAR(50) NOT NULL,
@@ -81,7 +78,6 @@ CREATE TABLE driver_certification_owned (
     FOREIGN KEY (CertificationTypeID) REFERENCES vehicle_certification_type(CertificationTypeID) ON DELETE CASCADE
 );
 
-
 CREATE TABLE monthly_score_log (
     LogID INT AUTO_INCREMENT PRIMARY KEY,
     DriverID VARCHAR(50) NOT NULL,
@@ -92,12 +88,10 @@ CREATE TABLE monthly_score_log (
     CONSTRAINT unique_driver_month_year UNIQUE (DriverID, Month, Year)
 );
 
-
 CREATE TABLE severity_level (
     SeverityID INT AUTO_INCREMENT PRIMARY KEY,
     LevelName VARCHAR(50) NOT NULL
 );
-
 
 CREATE TABLE behaviour_event (
     EventID INT AUTO_INCREMENT PRIMARY KEY,
@@ -112,10 +106,7 @@ CREATE TABLE behaviour_event (
     FOREIGN KEY (DriverID) REFERENCES driver(DriverID),
     FOREIGN KEY (SeverityID) REFERENCES severity_level(SeverityID),
     FOREIGN KEY (DepotID) REFERENCES depot_location(DepotID)
-    
 );
-
-
 
 CREATE TABLE workshop (
     WorkshopID INT AUTO_INCREMENT PRIMARY KEY,
@@ -123,11 +114,8 @@ CREATE TABLE workshop (
     WorkshopAddress VARCHAR(255),
     DepotID INT,
     FOREIGN KEY (DepotID) REFERENCES depot_location(DepotID) ON DELETE SET NULL,
-    -- One workshop per depot, per "The company operates one workshop
-    -- per depot" in the brief.
     UNIQUE KEY uq_workshop_depot (DepotID)
 );
-
 
 CREATE TABLE alert (
     AlertID INT AUTO_INCREMENT PRIMARY KEY,
@@ -137,7 +125,6 @@ CREATE TABLE alert (
     AlertTimestamp DATETIME NOT NULL,
     Status VARCHAR(50) DEFAULT 'New',
     FOREIGN KEY (VehicleID) REFERENCES vehicle(VehicleID) ON DELETE CASCADE
-    
 );
 
 CREATE TABLE maintenance_job (
@@ -152,9 +139,7 @@ CREATE TABLE maintenance_job (
     FOREIGN KEY (VehicleID) REFERENCES vehicle(VehicleID),
     FOREIGN KEY (WorkshopID) REFERENCES workshop(WorkshopID),
     FOREIGN KEY (AlertID) REFERENCES alert(AlertID)
-
 );
-
 
 CREATE TABLE activity_certification (
     CertificationID INT AUTO_INCREMENT PRIMARY KEY,
@@ -162,15 +147,12 @@ CREATE TABLE activity_certification (
     Description TEXT
 );
 
-
-
 CREATE TABLE activity_type (
     ActivityTypeID INT AUTO_INCREMENT PRIMARY KEY,
     ActivityTypeName VARCHAR(255) NOT NULL UNIQUE,
     CertificationID INT,
     FOREIGN KEY (CertificationID) REFERENCES activity_certification(CertificationID) ON DELETE SET NULL
 );
-
 
 CREATE TABLE mechanic_worker (
     MechanicID VARCHAR(50) PRIMARY KEY,
@@ -180,7 +162,6 @@ CREATE TABLE mechanic_worker (
     WorkshopID INT,
     FOREIGN KEY (WorkshopID) REFERENCES workshop(WorkshopID) ON DELETE SET NULL
 );
-
 
 CREATE TABLE mechanic_worker_certifications_history (
     CertificationLogID INT AUTO_INCREMENT PRIMARY KEY,
@@ -196,35 +177,22 @@ CREATE TABLE activity_instance (
     ActivityID INT AUTO_INCREMENT PRIMARY KEY,
     JobID INT NOT NULL,
     ActivityTypeID INT NOT NULL,
-    -- Kept in sync with SUM(activity_instance_worker_assigned.LabourHours)
-    -- by trg_activity_worker_hours_after_* in business_rules.sql, so
-    -- existing per-activity queries keep working unchanged even though
-    -- hours are now recorded per mechanic underneath.
     LabourHours DECIMAL(4,2),
     DiagnosticResult TEXT,
-    -- Simple per-activity indicators from the brief's Activity-Level
-    -- Information list. The warranty_claim/warranty_part_list tables
-    -- (extension task) still carry the detailed claim.
     RepeatFault BOOLEAN NOT NULL DEFAULT FALSE,
     WarrantyApplicable BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (JobID) REFERENCES maintenance_job(JobID) ON DELETE CASCADE,
     FOREIGN KEY (ActivityTypeID) REFERENCES activity_type(ActivityTypeID)
 );
 
-
 CREATE TABLE activity_instance_worker_assigned (
     ActivityID INT NOT NULL,
     MechanicID VARCHAR(50) NOT NULL,
-    -- Labour hours logged by this specific mechanic on this activity,
-    -- matching the brief's example (two mechanics on one brake service,
-    -- each logging their own hours) rather than one total per activity.
     LabourHours DECIMAL(4,2) NULL,
     PRIMARY KEY (ActivityID, MechanicID),
     FOREIGN KEY (ActivityID) REFERENCES activity_instance(ActivityID) ON DELETE CASCADE,
     FOREIGN KEY (MechanicID) REFERENCES mechanic_worker(MechanicID) ON DELETE CASCADE
 );
-
-
 
 CREATE TABLE partner_company (
     PartnerID INT AUTO_INCREMENT PRIMARY KEY,
@@ -232,10 +200,8 @@ CREATE TABLE partner_company (
     PartnerType VARCHAR(50),
     DeliveryLeadTimes VARCHAR(10),
     ContactInfo VARCHAR(255),
-    Description  TEXT
+    Description TEXT
 );
-
-
 
 CREATE TABLE part (
     PartID INT AUTO_INCREMENT PRIMARY KEY,
@@ -257,7 +223,6 @@ CREATE TABLE supplier_product_list (
     FOREIGN KEY (PartnerID) REFERENCES partner_company(PartnerID) ON DELETE CASCADE
 );
 
-
 CREATE TABLE warranty_claim (
     WarrantyClaimID VARCHAR(50) PRIMARY KEY,
     PartnerID INT NOT NULL,
@@ -277,49 +242,14 @@ CREATE TABLE warranty_part_list (
     FOREIGN KEY (PartID) REFERENCES part(PartID) ON DELETE CASCADE
 );
 
-
 CREATE TABLE activity_instance_part_used (
     ActivityID INT NOT NULL,
     PartID INT NOT NULL,
     QuantityUsed INT,
-    -- Which supplier fulfilled this specific usage, captured at record
-    -- time. Kept separate from part.PrimarySupplierID (which can change
-    -- later) so historical consumption stays attributed correctly even
-    -- after a part's supplier changes.
     SupplierID INT NULL,
     PRIMARY KEY (ActivityID, PartID),
     FOREIGN KEY (ActivityID) REFERENCES activity_instance(ActivityID),
     FOREIGN KEY (PartID) REFERENCES part(PartID),
     FOREIGN KEY (SupplierID) REFERENCES partner_company(PartnerID)
-
 );
 
--- Coaching / retraining record for a driver, optionally tied to the
--- behaviour_event that triggered it. An event with no matching
--- coaching_log row is treated as an unresolved incident (see
--- view_incident_resolution in basic_views.sql).
-CREATE TABLE coaching_log (
-    CoachingID INT AUTO_INCREMENT PRIMARY KEY,
-    DriverID VARCHAR(50) NOT NULL,
-    EventID INT NULL,
-    CoachDate DATE NOT NULL,
-    ConductedBy VARCHAR(255),
-    Outcome VARCHAR(50) NOT NULL,
-    Notes TEXT,
-    FOREIGN KEY (DriverID) REFERENCES driver(DriverID) ON DELETE CASCADE,
-    FOREIGN KEY (EventID) REFERENCES behaviour_event(EventID) ON DELETE SET NULL
-);
-
--- Per-classification service interval, used to flag vehicles overdue for
--- service (see view_vehicles_overdue_for_service in basic_views.sql).
--- Updating a rule's IntervalDays only changes how *future* overdue checks
--- are evaluated — it never rewrites the maintenance_job history the check
--- is compared against.
-CREATE TABLE maintenance_schedule_rule (
-    RuleID INT AUTO_INCREMENT PRIMARY KEY,
-    ClassificationID INT NOT NULL,
-    IntervalDays INT NOT NULL,
-    Description VARCHAR(255),
-    FOREIGN KEY (ClassificationID) REFERENCES vehicle_classification(ClassificationID) ON DELETE CASCADE,
-    UNIQUE KEY unique_classification_rule (ClassificationID)
-);
