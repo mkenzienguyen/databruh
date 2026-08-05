@@ -1,18 +1,14 @@
 
 USE databruh_db;
 
--- ==========================================
 -- 1. Depot Locations
--- ==========================================
 INSERT INTO depot_location (DepotName, DepotAddress) VALUES 
 ('Hanoi', 'Lot CN-08, Road No. 4, Thach That - Quoc Oai Industrial Park, Phung Xa Commune, Thach That District, Hanoi'),
 ('Ho Chi Minh City', 'Plot E2-D9, Street D2, Saigon Hi-Tech Park (SHTP), Long Thanh My Ward, Thu Duc City, Ho Chi Minh City'),
 ('Da Nang', 'Road No. 5G, Da Nang High-Tech Park, Hoa Lien Commune, Hoa Vang District, Da Nang'),
 ('Can Tho', 'Block B-15, Street No. 2, Hung Phu 1 Industrial Zone, Dong Phu Ward, Cai Rang District, Can Tho');
 
--- ==========================================
 -- 2. Vehicle Classifications
--- ==========================================
 INSERT INTO vehicle_classification (ClassificationName) VALUES
 ('Delivery Van'),
 ('Refrigerated Truck'),
@@ -20,9 +16,7 @@ INSERT INTO vehicle_classification (ClassificationName) VALUES
 ('Service Vehicle'),
 ('Heavy Transport Truck');
 
--- ==========================================
 -- 3. Vehicle Operational Statuses
--- ==========================================
 INSERT INTO vehicle_status (StatusName) VALUES
 ('Active'),
 ('Available'),
@@ -31,9 +25,7 @@ INSERT INTO vehicle_status (StatusName) VALUES
 ('Out of Service'),
 ('Retired');
 
--- ==========================================
 -- 4. Vehicle Certification Types
--- ==========================================
 INSERT INTO vehicle_certification_type (CertificationName) VALUES
 ('Standard Licence'),
 ('Heavy Vehicle Licence'),
@@ -41,35 +33,27 @@ INSERT INTO vehicle_certification_type (CertificationName) VALUES
 ('EV Certification'),
 ('Hazardous Goods Certification');
 
--- ==========================================
 -- 5. Severity Levels
--- ==========================================
 INSERT INTO severity_level (LevelName) VALUES
 ('Low'),
 ('Medium'),
 ('High'),
 ('Critical');
 
--- ==========================================
 -- 6. Vehicles
--- ==========================================
 INSERT INTO vehicle (VehicleID, RegistrationNumber, Manufacturer, Model, ClassificationID, YearOfManufacture, StatusID, DepotID, CurrentOdometer) VALUES
 ('VEH-001', '29A-123.45', 'Ford', 'Transit', 1, 2023, 1, 1, 45310),
 ('VEH-002', '51C-789.01', 'Isuzu', 'QKR77HE4', 2, 2022, 1, 2, 112480),
 ('VEH-003', '43E-456.78', 'VinFast', 'VF Pro Van', 3, 2025, 1, 3, 12300);
 
--- ==========================================
 -- 7. Drivers
--- ==========================================
 INSERT INTO driver (DriverID, FullName, DepotID, LicenseNumber, LicenseExpiration, EmploymentStatus, ContactInfo, EmergencyContactDetails) VALUES
 ('D-112', 'Nguyen Van An', 1, 'L-29112', '2027-04-30', 'Active', '0901121122', 'Family - 0901121123'),
 ('D-204', 'Tran Thi Bich', 2, 'L-51204', '2028-05-01', 'Active', '0912042044', 'Family - 0912042045'),
 ('D-331', 'Le Quoc Minh', 1, 'L-29331', '2028-06-21', 'Active', '0983313311', 'Family - 0983313312'),
 ('D-417', 'Pham Duc Long', 4, 'L-65417', '2028-11-18', 'Active', '0974174177', 'Family - 0974174178');
 
--- ==========================================
 -- 8. Driver Certifications Owned
--- ==========================================
 -- Certifications: 1=Standard, 2=Heavy Vehicle, 3=Refrigerated, 4=EV, 5=Hazardous Goods
 INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate, ExpiryDate) VALUES
 ('D-112', 1, '2022-02-14', '2027-02-14'), -- Nguyen Van An: Standard Licence
@@ -83,9 +67,7 @@ INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate
 ('D-417', 1, '2025-01-01', '2026-06-01'),
 ('D-417', 4, '2025-01-01', '2026-06-01');
 
--- ==========================================
 -- 9. Driver - Vehicle Assignment
--- ==========================================
 INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate, EndDate) VALUES
 ('VEH-001', 'D-112', '2026-05-01', '2026-05-12'),
 ('VEH-001', 'D-331', '2026-05-13', NULL),
@@ -93,9 +75,7 @@ INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate, EndDate) 
 ('VEH-003', 'D-417', '2026-05-20', NULL);
 
 
--- ==========================================
 -- 10. Vehicle Type Certification Requirements
--- ==========================================
 INSERT INTO vehicle_type_certification_requirement (ClassificationID, CertificationTypeID) VALUES
 (1, 1), -- Delivery Van requires Standard Licence
 (2, 1), -- Refrigerated Truck also requires Standard Licence
@@ -107,9 +87,7 @@ INSERT INTO vehicle_type_certification_requirement (ClassificationID, Certificat
 (5, 2), -- Heavy Transport Truck requires Heavy Vehicle Licence
 (5, 5); -- Heavy Transport Truck also requires Hazardous Goods Certification
 
--- ==========================================
 -- 11. Behaviour Events
--- ==========================================
 -- Severities: 1=Low, 2=Medium, 3=High, 4=Critical
 -- Depots: 1=Hanoi, 2=HCMC, 3=Da Nang
 INSERT INTO behaviour_event (EventID, VehicleID, DriverID, DepotID, Timestamp, SeverityID, EventType, Description) VALUES
@@ -143,26 +121,20 @@ INSERT INTO behaviour_event (EventID, VehicleID, DriverID, DepotID, Timestamp, S
 
 
 
--- ==========================================
 -- 1. Workshops (One per Depot)
--- ==========================================
 -- Depots: 1 = Hanoi, 2 = Ho Chi Minh City
 INSERT INTO workshop (WorkshopID, WorkshopName, WorkshopAddress, DepotID) VALUES
 (1, 'Ha Noi Central Workshop', 'Lot CN-08, Road No. 4, Thach That - Quoc Oai Industrial Park, Hanoi', 1),
 (2, 'HCMC South Workshop', 'Plot E2-D9, Street D2, Saigon Hi-Tech Park (SHTP), Thu Duc City, Ho Chi Minh City', 2);
 
--- ==========================================
 -- 2. Activity Certifications (Mechanic Qualifications)
--- ==========================================
 INSERT INTO activity_certification (CertificationID, CertificationName, Description) VALUES
 (1, 'Standard Vehicle Mechanic Licence', 'Covers routine inspections, servicing, diagnostics, emergency repairs, and component replacements.'),
 (2, 'EV Technician Certification', 'Required for electric vehicle battery and electrical repairs.'),
 (3, 'Refrigeration Systems Certification', 'Required for refrigeration system repairs on cold-chain trucks.'),
 (4, 'Heavy Vehicle Mechanic Licence', 'Required for repairs on heavy vehicle categories.');
 
--- ==========================================
 -- 3. Activity Types (Mapped to required Certifications)
--- ==========================================
 INSERT INTO activity_type (ActivityTypeID, ActivityTypeName, CertificationID) VALUES
 (1, 'Routine Inspection', 1),
 (2, 'Preventative Servicing', 1),
@@ -175,9 +147,7 @@ INSERT INTO activity_type (ActivityTypeID, ActivityTypeName, CertificationID) VA
 (9, 'Brake Service', 1),
 (10, 'Tyre Replacement', 1);
 
--- ==========================================
 -- 4. Mechanics
--- ==========================================
 -- Workshops: 1 = Hanoi Central, 2 = HCMC South
 INSERT INTO mechanic_worker (MechanicID, FullName, EmploymentStatus, EmergencyContactDetails, WorkshopID) VALUES
 ('ME-12', 'Hoang Van Duc', 'Active', 'Wife - 0901234560', 1),
@@ -185,10 +155,8 @@ INSERT INTO mechanic_worker (MechanicID, FullName, EmploymentStatus, EmergencyCo
 ('ME-07', 'Nguyen Thi Mai', 'Active', 'Brother - 0901234562', 2),
 ('ME-09', 'Tran Quoc Bao', 'Active', 'Father - 0901234563', 2);
 
--- ==========================================
 -- 5. Mechanics Certification History
 -- Dates shifted forward to maintain valid status windows
--- ==========================================
 INSERT INTO mechanic_worker_certifications_history (MechanicID, CertificationID, IssueDate, ExpiryDate) VALUES
 ('ME-12', 1, '2022-01-15', '2032-01-15'), -- Hoang Van Duc: Standard Mechanic
 ('ME-15', 1, '2023-03-20', '2033-03-20'), -- Pham Thi Lan: Standard Mechanic
@@ -196,23 +164,17 @@ INSERT INTO mechanic_worker_certifications_history (MechanicID, CertificationID,
 ('ME-09', 1, '2020-11-05', '2030-11-05'), -- Tran Quoc Bao: Standard Mechanic
 ('ME-09', 3, '2023-02-15', '2028-02-15'); -- Tran Quoc Bao: Refrigeration Certified
 
--- ==========================================
 -- 6. Alerts (Onboard Diagnostic Alerts)
--- ==========================================
 INSERT INTO alert (AlertID, AlertName, VehicleID, AlertDescription, AlertTimestamp, Status) VALUES
 (1, 'Brake Wear Warning', 'VEH-001', 'Brake pads worn below threshold.', '2026-05-11 20:15:00', 'Escalated'),
 (2, 'Cooling System Anomaly', 'VEH-002', 'Refrigeration unit temperature fluctuations.', '2026-05-13 15:40:00', 'Escalated');
 
--- ==========================================
 -- 7. Maintenance Jobs
--- ==========================================
 INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, Status, AlertID, TotalCost) VALUES
 (1021, 'VEH-001', 1, '2026-05-12 09:00:00', '2026-05-13 03:00:00', 'Closed', 1, 1800000), -- Total Cost: 1.8M VND, Downtime: 18h
 (1022, 'VEH-002', 2, '2026-05-14 08:00:00', '2026-05-14 14:00:00', 'Closed', 2, 3610000); -- Total Cost: 3.61M VND, Downtime: 6h
 
--- ==========================================
 -- 8. Activity Instances (Details of the Jobs)
--- ==========================================
 -- Job M1021 activities
 INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, DiagnosticResult) VALUES
 (101, 1021, 9, 5, 'Pads worn below 3mm'),              -- Activity 1: Brake Service (split among 2 mechanics, total 5 hrs)
@@ -223,9 +185,7 @@ INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, D
 (103, 1022, 2, 2, 'OK'),                                -- Activity 1: Preventative Servicing (1.5 hrs)
 (104, 1022, 7, 2, 'Belt cracked - 3rd replacement this year'); -- Activity 2: Refrigeration Repair (2.0 hrs)
 
--- ==========================================
 -- 9. Mechanic Activity Assignments (Workload Distribution)
--- ==========================================
 -- Job M1021: Brake Service (Hoang Van Duc [ME-12] & Pham Thi Lan [ME-15])
 INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
 (101, 'ME-12', 2.5),
@@ -246,9 +206,7 @@ INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHou
 UPDATE activity_instance SET RepeatFault = TRUE WHERE ActivityID = 102;
 UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 104;
 
--- ==========================================
 -- 9b. Open Job: Repeat Refrigeration Failure on VEH-002 (third occurrence)
--- ==========================================
 INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, Status, AlertID, TotalCost) VALUES
 (1023, 'VEH-002', 2, '2026-06-01 09:00:00', NULL, 'Open', NULL, NULL);
 
@@ -269,9 +227,7 @@ INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHou
 
 
 
--- ==========================================
 -- 1. Partner Companies (Suppliers & Manufacturers)
--- ==========================================
 -- Part type options: 'Supplier', 'Manufacturer'
 INSERT INTO partner_company (PartnerID, PartnerName, PartnerType, DeliveryLeadTimes, ContactInfo, Description) VALUES
 (1, 'Ford Vietnam', 'Manufacturer', '5 Days', 'ford_vietnam_b2b@ford.com.vn, Tel: +84-24-3766-7888', 'OEM Vehicle Manufacturer & Parts Provider'),
@@ -280,18 +236,14 @@ INSERT INTO partner_company (PartnerID, PartnerName, PartnerType, DeliveryLeadTi
 (4, 'Saigon Fleet Supplies Co.', 'Supplier', '3 Days', 'order@saigonfleetparts.com, Tel: +84-28-7300-1122', 'Southern district distribution center'),
 (5, 'Carrier Transicold Southeast Asia', 'Supplier', '10 Days', 'global_coldchain@carrier.com, Tel: +65-6248-6100', 'Specialist Cold-Chain Tech & Parts');
 
--- ==========================================
 -- 2. Parts Catalog
--- ==========================================
 -- Mapping parts to their primary and backup suppliers from partner_company
 INSERT INTO part (PartID, PartName, PrimarySupplierID, BackupSupplierID) VALUES
 (501, 'Front Brake Pad Set',  3, 1), -- Front Brake Pad Set (Primary: Hanoi Parts, Backup: Ford Vietnam OEM)
 (502, 'Heavy-Duty Fleet Tyre', 4, 3), -- Heavy-Duty Fleet Tyre (Primary: Saigon Fleet, Backup: Hanoi Parts)
 (503, 'Refrigeration Compress Belts', 5, 4); -- Refrigeration Compress Belts (Primary: Carrier Global, Backup: Saigon Fleet)
 
--- ==========================================
 -- 3. Supplier Product List (Pricing Matrix)
--- ==========================================
 INSERT INTO supplier_product_list (PartID, PartnerID, CostPerUnit, Description) VALUES
 -- Part 501: Front Brake Pads
 (501, 3, 450000, 'Aftermarket premium brake pads for light commercial vans'),
@@ -303,39 +255,29 @@ INSERT INTO supplier_product_list (PartID, PartnerID, CostPerUnit, Description) 
 (503, 5, 800000, 'Specialist heavy-duty thermal-resistant refrigeration belt'),
 (503, 4, 950000, 'Standard replacement cooling system alternator belt');
 
--- ==========================================
 -- 4. Parts Used in Activities
--- ==========================================
 INSERT INTO activity_instance_part_used (ActivityID, PartID, QuantityUsed, SupplierID) VALUES
 (101, 501, 1, 3), -- Used 1 Set of Front Brake Pads for VEH-001, supplied by Hanoi Auto Parts JSC
 (102, 502, 2, 4), -- Used 2 New Tyres for VEH-001, supplied by Saigon Fleet Supplies Co.
 (104, 503, 1, 5); -- Used 1 Refrigeration Belt for VEH-002, supplied by Carrier Transicold Southeast Asia
 
--- ==========================================
 -- 5. Warranty Claims
--- ==========================================
 INSERT INTO warranty_claim (WarrantyClaimID, PartnerID, ActivityID, Status, ClaimDate, ClaimResolvedDate) VALUES
 ('WAR-2026-0001', 5, 104, 'On going', '2026-05-14 15:00:00', NULL);
 
--- ==========================================
 -- 6. Warranty Part List
--- ==========================================
 -- Linking the cracked refrigeration belt replacement to our active claim
 INSERT INTO warranty_part_list (WarrantyClaimID, PartID) VALUES
 ('WAR-2026-0001', 503);
 
--- ==========================================
 -- 7. Coaching Log
--- ==========================================
 -- Events 92 and 94 are resolved (coached); 91, 93, 95, 96, 97 are not.
 INSERT INTO coaching_log (DriverID, EventID, CoachDate, ConductedBy, Outcome, Notes) VALUES
 ('D-112', 92, '2026-05-11', 'Fleet Manager', 'Coached - Verbal Warning', 'Reviewed telematics speeding event with driver; acknowledged and corrected.'),
 ('D-112', 94, '2026-05-13', 'Fleet Manager', 'Retraining Required', 'Second high-severity event this week (fatigue warning). Scheduled for defensive driving refresher.'),
 ('D-331', NULL, '2026-05-14', 'Fleet Manager', 'Completed - No Concerns', 'Routine quarterly safety check-in; no incidents to discuss.');
 
--- ==========================================
 -- 8. Maintenance Schedule Rules
--- ==========================================
 INSERT INTO maintenance_schedule_rule (ClassificationID, IntervalDays, Description) VALUES
 (1, 180, 'Delivery Van: routine service every 6 months'),
 (2, 90, 'Refrigerated Truck: cold-chain duty cycle, serviced every 3 months'),
@@ -343,17 +285,13 @@ INSERT INTO maintenance_schedule_rule (ClassificationID, IntervalDays, Descripti
 (4, 120, 'Service Vehicle: serviced every 4 months'),
 (5, 90, 'Heavy Transport Truck: serviced every 3 months');
 
--- ==========================================
 -- 9. Part Inventory Levels
--- ==========================================
 -- Tyres (502) are seeded below their reorder threshold.
 UPDATE part SET QuantityOnHand = 40, ReorderThreshold = 15 WHERE PartID = 501;
 UPDATE part SET QuantityOnHand = 8,  ReorderThreshold = 10 WHERE PartID = 502;
 UPDATE part SET QuantityOnHand = 20, ReorderThreshold = 5  WHERE PartID = 503;
 
--- ==========================================
 -- Additional Vehicles
--- ==========================================
 INSERT INTO vehicle (VehicleID, RegistrationNumber, Manufacturer, Model, ClassificationID, YearOfManufacture, StatusID, DepotID, CurrentOdometer) VALUES
 ('VEH-004', '30F-224.10', 'Ford', 'Transit', 1, 2024, 1, 1, 18500),
 ('VEH-005', '51C-880.22', 'Isuzu', 'QKR77HE4', 2, 2023, 1, 2, 76200),
@@ -365,9 +303,7 @@ INSERT INTO vehicle (VehicleID, RegistrationNumber, Manufacturer, Model, Classif
 -- actually under maintenance rather than nominally Active.
 UPDATE vehicle SET StatusID = 3 WHERE VehicleID = 'VEH-002';
 
--- ==========================================
 -- Additional Drivers
--- ==========================================
 INSERT INTO driver (DriverID, FullName, DepotID, LicenseNumber, LicenseExpiration, EmploymentStatus, ContactInfo, EmergencyContactDetails) VALUES
 ('D-528', 'Vo Thi Hoa', 3, 'L-43528', '2029-01-15', 'Active', '0935285281', 'Sister - 0935285282'),
 ('D-604', 'Dang Van Kiet', 2, 'L-51604', '2028-09-01', 'Active', '0916046044', 'Wife - 0916046045'),
@@ -376,9 +312,7 @@ INSERT INTO driver (DriverID, FullName, DepotID, LicenseNumber, LicenseExpiratio
 ('D-931', 'Trinh Thi Mai', 3, 'L-43931', '2028-02-20', 'On Leave', '0935931932', 'Brother - 0935931933'),
 ('D-1042', 'Ly Van Son', 2, 'L-51042', '2027-10-05', 'Suspended', '0916042043', 'Father - 0916042044');
 
--- ==========================================
 -- Additional Driver Certifications Owned
--- ==========================================
 INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate, ExpiryDate) VALUES
 ('D-528', 1, '2020-05-01', '2026-06-01'),  -- Vo Thi Hoa: Standard Licence, EXPIRED
 ('D-604', 1, '2022-01-10', '2028-01-10'),  -- Dang Van Kiet: Standard Licence
@@ -391,17 +325,13 @@ INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate
 ('D-931', 3, '2022-04-01', '2028-04-01'),  -- Trinh Thi Mai: Refrigerated Transport Certification
 ('D-1042', 1, '2021-09-01', '2027-09-01'); -- Ly Van Son: Standard Licence
 
--- ==========================================
 -- Additional Vehicle - Driver Assignments
--- ==========================================
 INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate, EndDate) VALUES
 ('VEH-004', 'D-715', '2026-02-01', NULL),
 ('VEH-005', 'D-604', '2026-03-01', NULL),
 ('VEH-006', 'D-528', '2026-04-01', NULL);
 
--- ==========================================
 -- Additional Behaviour Events (spread Feb-Aug 2026)
--- ==========================================
 -- Depots: 1=Hanoi, 2=HCMC, 3=Da Nang
 INSERT INTO behaviour_event (EventID, VehicleID, DriverID, DepotID, Timestamp, SeverityID, EventType, Description) VALUES
 (98,  'VEH-004', 'D-715', 1, '2026-02-05 08:10:00', 1, 'Harsh Braking',     'Odometer: 15,020'),
@@ -425,39 +355,29 @@ INSERT INTO behaviour_event (EventID, VehicleID, DriverID, DepotID, Timestamp, S
 
 -- Monthly scores for these drivers are computed by trigger, not hand-entered.
 
--- ==========================================
 -- Additional Workshop
--- ==========================================
 INSERT INTO workshop (WorkshopID, WorkshopName, WorkshopAddress, DepotID) VALUES
 (3, 'Da Nang Coastal Workshop', 'Road No. 5G, Da Nang High-Tech Park, Hoa Vang District, Da Nang', 3);
 
--- ==========================================
 -- Additional Mechanics
--- ==========================================
 INSERT INTO mechanic_worker (MechanicID, FullName, EmploymentStatus, EmergencyContactDetails, WorkshopID) VALUES
 ('ME-21', 'Le Thi Hang', 'Active', 'Husband - 0935214213', 3),
 ('ME-24', 'Nguyen Van Tai', 'Active', 'Wife - 0916244243', 2);
 
--- ==========================================
 -- Additional Mechanic Certification History
--- ==========================================
 INSERT INTO mechanic_worker_certifications_history (MechanicID, CertificationID, IssueDate, ExpiryDate) VALUES
 ('ME-21', 1, '2023-01-10', '2033-01-10'),
 ('ME-21', 2, '2023-05-01', '2029-05-01'),
 ('ME-24', 1, '2021-08-15', '2031-08-15'),
 ('ME-24', 4, '2022-02-01', '2028-02-01');
 
--- ==========================================
 -- Additional Alerts
--- ==========================================
 INSERT INTO alert (AlertID, AlertName, VehicleID, AlertDescription, AlertTimestamp, Status) VALUES
 (3, 'Tyre Pressure Low', 'VEH-004', 'Front-left tyre pressure below recommended threshold.', '2026-06-05 09:00:00', 'New'),
 (4, 'Engine Overheat Warning', 'VEH-007', 'Coolant temperature exceeding safe operating range.', '2026-07-20 13:10:00', 'Escalated'),
 (5, 'Battery Health Degraded', 'VEH-003', 'EV battery state-of-health below 80%.', '2026-04-10 10:00:00', 'Resolved');
 
--- ==========================================
 -- Additional Maintenance Jobs
--- ==========================================
 INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, Status, AlertID, TotalCost) VALUES
 (1024, 'VEH-004', 1, '2026-06-06 09:00:00', '2026-06-06 14:00:00', 'Closed', 3, 950000),
 (1025, 'VEH-005', 2, '2026-04-20 08:00:00', '2026-04-21 08:00:00', 'Closed', NULL, 4200000),
@@ -467,9 +387,7 @@ INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, S
 (1029, 'VEH-001', 1, '2026-07-02 09:00:00', '2026-07-02 15:00:00', 'Closed', NULL, 500000),
 (1030, 'VEH-002', 2, '2026-07-10 08:00:00', '2026-07-11 08:00:00', 'Closed', NULL, 2900000);
 
--- ==========================================
 -- Additional Activity Instances
--- ==========================================
 INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, DiagnosticResult) VALUES
 (106, 1024, 10, 1.5, 'Front-left tyre replaced, pressure sensor recalibrated'),
 (107, 1025, 2, 6.0, 'Full service - oil, filters, brake fluid'),
@@ -480,9 +398,7 @@ INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, D
 (112, 1029, 1, 1.0, 'Routine inspection - all systems normal'),
 (113, 1030, 9, 3.0, 'Brake pads worn - replaced both axles');
 
--- ==========================================
 -- Additional Mechanic Activity Assignments
--- ==========================================
 INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
 (106, 'ME-12', 1.5),
 (107, 'ME-07', 6.0),
@@ -495,32 +411,24 @@ INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHou
 
 UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 110;
 
--- ==========================================
 -- Additional Suppliers
--- ==========================================
 INSERT INTO partner_company (PartnerID, PartnerName, PartnerType, DeliveryLeadTimes, ContactInfo, Description) VALUES
 (6, 'VinFast EV Parts Center', 'Manufacturer', '6 Days', 'evparts@vinfast.vn, Tel: +84-225-730-9999', 'OEM EV battery and drivetrain components'),
 (7, 'Southern Truck Radiators Ltd.', 'Supplier', '4 Days', 'sales@southerntruckradiators.com, Tel: +84-28-3822-1010', 'Heavy truck cooling system specialist');
 
--- ==========================================
 -- Additional Parts (inventory columns included directly)
--- ==========================================
 INSERT INTO part (PartID, PartName, PrimarySupplierID, BackupSupplierID, QuantityOnHand, ReorderThreshold) VALUES
 (504, 'EV Battery Module', 6, 3, 3, 2),
 (505, 'Engine Coolant Radiator', 7, 2, 6, 3);
 
--- ==========================================
 -- Additional Supplier Product List
--- ==========================================
 INSERT INTO supplier_product_list (PartID, PartnerID, CostPerUnit, Description) VALUES
 (504, 6, 18000000, 'OEM EV battery module for VF Pro Van'),
 (504, 3, 15500000, 'Aftermarket-compatible EV battery module'),
 (505, 7, 3200000, 'Heavy-duty replacement radiator for commercial trucks'),
 (505, 2, 3800000, 'Isuzu Genuine OEM radiator assembly');
 
--- ==========================================
 -- Additional Parts Used in Activities
--- ==========================================
 INSERT INTO activity_instance_part_used (ActivityID, PartID, QuantityUsed, SupplierID) VALUES
 (106, 502, 1, 4),
 (108, 501, 1, 3),
@@ -528,18 +436,14 @@ INSERT INTO activity_instance_part_used (ActivityID, PartID, QuantityUsed, Suppl
 (110, 504, 1, 6),
 (113, 501, 1, 1);
 
--- ==========================================
 -- Additional Warranty Claims
--- ==========================================
 INSERT INTO warranty_claim (WarrantyClaimID, PartnerID, ActivityID, Status, ClaimDate, ClaimResolvedDate) VALUES
 ('WAR-2026-0002', 6, 110, 'Resolved', '2026-04-12 09:00:00', '2026-04-20 10:00:00');
 
 INSERT INTO warranty_part_list (WarrantyClaimID, PartID) VALUES
 ('WAR-2026-0002', 504);
 
--- ==========================================
 -- Additional Coaching Log
--- ==========================================
 INSERT INTO coaching_log (DriverID, EventID, CoachDate, ConductedBy, Outcome, Notes) VALUES
 ('D-604', 101, '2026-03-04', 'Fleet Manager', 'Coached - Verbal Warning', 'First speeding event discussed.'),
 ('D-604', 107, '2026-04-20', 'Fleet Manager', 'Retraining Required', 'Second speeding event within two months - mandatory retraining scheduled.'),

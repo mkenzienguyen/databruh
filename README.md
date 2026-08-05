@@ -34,8 +34,7 @@ Notes:
 - After loading new `behaviour_event` rows any other way (e.g. restoring a partial dump), run `CALL sp_recalculate_all_monthly_scores();` once to backfill `monthly_score_log` from them.
 - `database_files/databruh_db/suggested_indexes.sql` is optional and not required to run the app.
 - If you already have a `databruh_db` from before and don't want to drop it, run these additive migration scripts instead of re-running `full_creation_script.sql`, then re-import `basic_views.sql` to pick up the views built on top of them:
-  - `database_files/databruh_db/database_creation_sql/coaching.sql` — adds the `coaching_log` table used to record driver coaching/retraining outcomes.
-  - `database_files/databruh_db/database_creation_sql/workshop_operations.sql` — adds the `maintenance_schedule_rule` table, `part.QuantityOnHand`/`ReorderThreshold` columns, and `activity_instance_part_used.SupplierID` used by the workshop manager dashboard.
+  - `database_files/databruh_db/database_creation_sql/workshop_operations.sql` — adds the `maintenance_schedule_rule` table, `part.QuantityOnHand`/`ReorderThreshold` columns, `activity_instance_part_used.SupplierID` used by the workshop manager dashboard, and the `coaching_log` table used to record driver coaching/retraining outcomes.
   - `database_files/databruh_db/database_creation_sql/business_rules.sql` — adds the assignment-eligibility triggers, computed monthly scoring, and the schema additions described above.
 
 ### Updating an existing database after `git pull`

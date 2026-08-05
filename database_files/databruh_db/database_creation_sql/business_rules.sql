@@ -6,9 +6,7 @@ USE databruh_db;
 -- critical event. Also computes monthly_score_log from behaviour_event
 -- instead of hand-entry. Safe to re-run.
 
--- ---------------------------------------------------------------------
 -- 1. Schema additions
--- ---------------------------------------------------------------------
 
 -- One workshop per depot.
 ALTER TABLE workshop
@@ -28,9 +26,7 @@ JOIN activity_instance ai ON aiwa.ActivityID = ai.ActivityID
 SET aiwa.LabourHours = ai.LabourHours
 WHERE aiwa.LabourHours IS NULL;
 
--- ---------------------------------------------------------------------
 -- 2. Keep activity_instance.LabourHours in sync with per-mechanic hours
--- ---------------------------------------------------------------------
 
 DELIMITER $$
 
@@ -72,14 +68,12 @@ END$$
 
 DELIMITER ;
 
--- ---------------------------------------------------------------------
 -- 3. Monthly safety score, computed from behaviour_event.
 -- Base 100, minus per-event penalties (Low -2, Medium -5, High -10,
 -- Critical -20), minus flat deductions (>3 speeding: -10, >2 fatigue
 -- warnings: -15, any critical event: -10 more). Clamped to [0, 100].
 -- sp_recalculate_all_monthly_scores rebuilds every driver/month; useful
 -- for backfilling after loading historical event data.
--- ---------------------------------------------------------------------
 
 DELIMITER $$
 
@@ -194,14 +188,12 @@ END$$
 
 DELIMITER ;
 
--- ---------------------------------------------------------------------
 -- 4. Assignment eligibility enforcement.
 -- Raises SIGNAL SQLSTATE '45000' on the first rule violated (mysqli
 -- surfaces this as a mysqli_sql_exception). Certification/score checks
 -- use the assignment's StartDate, not today, so historical assignments
 -- stay valid even if a cert has since lapsed. Vehicle status uses its
 -- current value only (no status history tracked).
--- ---------------------------------------------------------------------
 
 DELIMITER $$
 
