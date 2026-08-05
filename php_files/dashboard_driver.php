@@ -128,25 +128,15 @@ if ($linkedId !== null) {
     <?php renderSiteNavigation('dashboard'); ?>
 
     <main id="main-content" class="site-main overflow-x-hidden w-full max-w-full">
-        <section class="site-hero dashboard-hero" aria-labelledby="driver-dashboard-title">
-            <div class="hero-grid" aria-hidden="true"></div>
-            <div class="site-hero-content">
-                <p class="eyebrow" data-hero-item>Driver · Your safety record</p>
-                <h1 id="driver-dashboard-title" class="max-w-6xl" data-hero-item>
-                    Your score,
-                    <br>your history.
-                </h1>
-                <p class="hero-copy" data-hero-item>
-                    Read-only view of your monthly safety score, recorded incidents,
-                    and alerts on the vehicle currently assigned to you.
-                </p>
-                <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
-                    <div class="hero-feedback system-feedback" role="status" data-hero-item>
-                        Successfully logged in as Driver.
-                    </div>
-                <?php endif; ?>
-            </div>
-        </section>
+        <div class="dashboard-page-head">
+            <p class="eyebrow">Driver · Your safety record</p>
+            <h1 id="driver-dashboard-title">Your score, your history.</h1>
+            <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
+                <div class="system-feedback" role="status">
+                    Successfully logged in as Driver.
+                </div>
+            <?php endif; ?>
+        </div>
 
         <?php if ($linkedId === null): ?>
             <section class="section-shell" style="padding: 4rem var(--page-gutter);">

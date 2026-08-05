@@ -1,0 +1,243 @@
+/* Vertical workspace sidebar for the admin dashboard — chatbot-platform style
+   left rail that swaps a single content panel per section. */
+
+.admin-workspace {
+    padding: clamp(2.5rem, 5vw, 4rem) var(--page-gutter) clamp(4rem, 8vw, 6rem);
+    background: var(--surface, var(--paper));
+}
+
+.admin-workspace-shell {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(1.25rem, 3vw, 2.25rem);
+    width: min(100%, var(--content-width));
+    margin: 0 auto;
+}
+
+/* Sidebar */
+
+.admin-sidebar {
+    position: sticky;
+    top: 6.5rem;
+    flex: 0 0 clamp(13.5rem, 17vw, 16.5rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    padding: 1.4rem 1rem;
+    border: 1px solid var(--line-dark);
+    border-radius: var(--radius-large);
+    background: var(--white);
+    box-shadow: var(--shadow);
+}
+
+.admin-sidebar-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0 0.5rem;
+}
+
+.admin-sidebar-eyebrow {
+    color: var(--muted);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+.admin-sidebar-head strong {
+    color: var(--ink);
+    font-size: 1.05rem;
+    letter-spacing: -0.01em;
+}
+
+.admin-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-medium);
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.admin-sidebar-link:hover {
+    background: var(--acid);
+}
+
+.admin-sidebar-link:focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 2px;
+}
+
+.admin-sidebar-link.is-active {
+    border-color: var(--ink);
+    background: var(--ink);
+    color: var(--white);
+}
+
+.admin-sidebar-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    color: inherit;
+}
+
+.admin-sidebar-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.admin-sidebar-count {
+    margin-left: auto;
+    padding: 0.08rem 0.5rem;
+    border-radius: 999px;
+    background: var(--acid);
+    color: var(--acid-deep);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.admin-sidebar-link.is-active .admin-sidebar-count {
+    background: rgba(252, 251, 247, 0.18);
+    color: var(--white);
+}
+
+/* Panels */
+
+.admin-panels {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.admin-panel {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.25rem, 4vw, 3rem);
+}
+
+.admin-panel[hidden] {
+    display: none;
+}
+
+.admin-panel-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--line-dark);
+}
+
+.admin-panel-head span {
+    color: var(--orange);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.admin-panel-head h2 {
+    color: var(--ink);
+    font-size: clamp(1.5rem, 2.3vw, 2rem);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+}
+
+.admin-panel-head p {
+    max-width: 46rem;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.admin-panel-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.admin-panel-block-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.admin-panel-block-head span {
+    color: var(--acid-deep);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+}
+
+.admin-panel-block-head h3 {
+    color: var(--ink);
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+.admin-panel-block-head p {
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+/* Neutralise the full-bleed page-gutter centering baked into the reused
+   dashboard/summary classes so they sit flush inside the panel column. */
+.admin-panels .dashboard-metrics {
+    width: 100%;
+    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+@media (max-width: 900px) {
+    .admin-workspace-shell {
+        flex-direction: column;
+    }
+
+    .admin-sidebar {
+        position: static;
+        flex-direction: row;
+        width: 100%;
+        overflow-x: auto;
+        padding: 0.85rem;
+    }
+
+    .admin-sidebar-head {
+        display: none;
+    }
+
+    .admin-sidebar-nav {
+        flex-direction: row;
+        gap: 0.5rem;
+    }
+
+    .admin-sidebar-link {
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 560px) {
+    .admin-panels .dashboard-metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}

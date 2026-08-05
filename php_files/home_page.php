@@ -47,7 +47,7 @@ $homeAssetVersions = [
                     vehicles, drivers, workshops, and suppliers across Vietnam.
                 </p>
                 <div class="hero-actions" aria-label="Databruh shortcuts" data-hero-item>
-                    <a class="button button-primary" href="./datavs.php">
+                    <a class="button button-primary" href="./login.php?dashboard=required">
                         Open safety dashboard
                     </a>
                     <button
@@ -115,7 +115,7 @@ $homeAssetVersions = [
                                 severity, depot context, and monthly driver scores.
                             </p>
                         </div>
-                        <a class="card-link" href="./datavs.php">
+                        <a class="card-link" href="./login.php?dashboard=required">
                             Open dashboard <span aria-hidden="true">-&gt;</span>
                         </a>
                     </article>
@@ -296,7 +296,7 @@ $homeAssetVersions = [
                     monthly driver scores in the existing live dashboard.
                 </p>
             </div>
-            <a class="button button-dark" href="./datavs.php">View dashboard</a>
+            <a class="button button-dark" href="./login.php?dashboard=required">View dashboard</a>
         </section>
     </main>
 

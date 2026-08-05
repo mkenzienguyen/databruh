@@ -28,7 +28,7 @@ if (!function_exists('renderSiteNavigation')) {
         $firstName = $nameParts[0] ?? $fullName;
         $dashboardHref = $isLoggedIn
             ? './' . roleDashboardPath((string) ($_SESSION['TypeID'] ?? ''))
-            : './datavs.php';
+            : './login.php?dashboard=required';
         ?>
         <header class="account-nav-shell site-nav-shell">
             <nav class="account-nav site-nav" aria-label="Primary navigation">
@@ -90,7 +90,7 @@ if (!function_exists('renderSiteFooter')) {
         $isLoggedIn = isset($_SESSION['AccountID']);
         $dashboardHref = $isLoggedIn
             ? './' . roleDashboardPath((string) ($_SESSION['TypeID'] ?? ''))
-            : './datavs.php';
+            : './login.php?dashboard=required';
         ?>
         <footer class="account-footer site-footer">
             <a class="brand footer-brand" href="./home_page.php">
@@ -217,11 +217,14 @@ if (!function_exists('renderSiteMotionScripts')) {
             @filemtime(__DIR__ . '/../../js_files/site_motion.js') ?: 1;
         $sortableTablesScriptVersion =
             @filemtime(__DIR__ . '/../../js_files/sortable_tables.js') ?: 1;
+        $tablePaginationScriptVersion =
+            @filemtime(__DIR__ . '/../../js_files/table_pagination.js') ?: 1;
         ?>
         <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
         <script src="../js_files/site_motion.js?v=<?php echo $motionScriptVersion; ?>"></script>
         <script src="../js_files/sortable_tables.js?v=<?php echo $sortableTablesScriptVersion; ?>"></script>
+        <script src="../js_files/table_pagination.js?v=<?php echo $tablePaginationScriptVersion; ?>"></script>
         <?php
     }
 }

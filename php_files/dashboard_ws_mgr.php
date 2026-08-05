@@ -420,25 +420,15 @@ $conn->close();
     <?php renderSiteNavigation('dashboard'); ?>
 
     <main id="main-content" class="site-main overflow-x-hidden w-full max-w-full">
-        <section class="site-hero dashboard-hero" aria-labelledby="ws-dashboard-title">
-            <div class="hero-grid" aria-hidden="true"></div>
-            <div class="site-hero-content">
-                <p class="eyebrow" data-hero-item>Workshop manager · Maintenance and workshop</p>
-                <h1 id="ws-dashboard-title" class="max-w-6xl" data-hero-item>
-                    Alerts into
-                    <br>planned, costed jobs.
-                </h1>
-                <p class="hero-copy" data-hero-item>
-                    Prioritise alerts, plan workshop capacity, and track cost and
-                    downtime from one workspace.
-                </p>
-                <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
-                    <div class="hero-feedback system-feedback" role="status" data-hero-item>
-                        Successfully logged in as Workshop Manager.
-                    </div>
-                <?php endif; ?>
-            </div>
-        </section>
+        <div class="dashboard-page-head">
+            <p class="eyebrow">Workshop manager · Maintenance and workshop</p>
+            <h1 id="ws-dashboard-title">Alerts into planned, costed jobs.</h1>
+            <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
+                <div class="system-feedback" role="status">
+                    Successfully logged in as Workshop Manager.
+                </div>
+            <?php endif; ?>
+        </div>
 
         <?php if ($message !== ''): ?>
             <div class="section-shell" style="padding-top: 2rem;">

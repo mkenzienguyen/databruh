@@ -139,26 +139,15 @@ $conn->close();
     <?php renderSiteNavigation('dashboard'); ?>
 
     <main id="main-content" class="site-main overflow-x-hidden w-full max-w-full">
-        <section class="site-hero dashboard-hero" aria-labelledby="mechanic-dashboard-title">
-            <div class="hero-grid" aria-hidden="true"></div>
-            <div class="site-hero-content">
-                <p class="eyebrow" data-hero-item>Mechanic · Assigned tasks</p>
-                <h1 id="mechanic-dashboard-title" class="max-w-6xl" data-hero-item>
-                    Your assigned
-                    <br>diagnostic work.
-                </h1>
-                <p class="hero-copy" data-hero-item>
-                    Read-only view of the maintenance activities assigned to you,
-                    plus lookup of any vehicle's full maintenance history,
-                    diagnostics, and previous repairs.
-                </p>
-                <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
-                    <div class="hero-feedback system-feedback" role="status" data-hero-item>
-                        Successfully logged in as Mechanic.
-                    </div>
-                <?php endif; ?>
-            </div>
-        </section>
+        <div class="dashboard-page-head">
+            <p class="eyebrow">Mechanic · Assigned tasks</p>
+            <h1 id="mechanic-dashboard-title">Your assigned diagnostic work.</h1>
+            <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
+                <div class="system-feedback" role="status">
+                    Successfully logged in as Mechanic.
+                </div>
+            <?php endif; ?>
+        </div>
 
         <?php if ($linkedId === null): ?>
             <section class="section-shell" style="padding: 4rem var(--page-gutter);">

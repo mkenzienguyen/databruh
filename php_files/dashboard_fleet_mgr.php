@@ -488,6 +488,7 @@ $conn->close();
     <link rel="stylesheet" href="../css_files/role_dashboards.css">
     <link rel="stylesheet" href="../css_files/minimalist_theme.css">
     <link rel="stylesheet" href="../css_files/swiss_bento_theme.css">
+    <link rel="stylesheet" href="../css_files/admin_sidebar.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
     <script>
         function confirmSelectChange(selectElement, label) {
@@ -509,25 +510,15 @@ $conn->close();
     <?php renderSiteNavigation('dashboard'); ?>
 
     <main id="main-content" class="site-main overflow-x-hidden w-full max-w-full">
-        <section class="site-hero dashboard-hero" aria-labelledby="fleet-dashboard-title">
-            <div class="hero-grid" aria-hidden="true"></div>
-            <div class="site-hero-content">
-                <p class="eyebrow" data-hero-item>Fleet manager · Driver and vehicle activity</p>
-                <h1 id="fleet-dashboard-title" class="max-w-6xl" data-hero-item>
-                    Drivers, vehicles,
-                    <br>and every assignment.
-                </h1>
-                <p class="hero-copy" data-hero-item>
-                    Review incidents, compare depots, and manage driver and vehicle
-                    activity from one workspace.
-                </p>
-                <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
-                    <div class="hero-feedback system-feedback" role="status" data-hero-item>
-                        Successfully logged in as Fleet Manager.
-                    </div>
-                <?php endif; ?>
-            </div>
-        </section>
+        <div class="dashboard-page-head">
+            <p class="eyebrow">Fleet manager · Driver and vehicle activity</p>
+            <h1 id="fleet-dashboard-title">Drivers, vehicles, and every assignment.</h1>
+            <?php if (isset($_GET['login']) && $_GET['login'] === 'success'): ?>
+                <div class="system-feedback" role="status">
+                    Successfully logged in as Fleet Manager.
+                </div>
+            <?php endif; ?>
+        </div>
 
         <?php if ($message !== ''): ?>
             <div class="section-shell" style="padding-top: 2rem;">
@@ -537,40 +528,100 @@ $conn->close();
             </div>
         <?php endif; ?>
 
-        <section id="dashboard-summary" class="dashboard-summary" aria-label="Dashboard summary">
-            <div class="dashboard-metrics">
-                <div>
-                    <span>Total drivers</span>
-                    <strong><?php echo $totalDrivers; ?></strong>
-                </div>
-                <div>
-                    <span>Total vehicles</span>
-                    <strong><?php echo $totalVehicles; ?></strong>
-                </div>
-                <div>
-                    <span>Active assignments</span>
-                    <strong><?php echo $activeAssignments; ?></strong>
-                </div>
-                <div>
-                    <span>Critical incidents this month</span>
-                    <strong><?php echo $criticalThisMonth; ?></strong>
-                </div>
-                <div>
-                    <span>Unresolved incidents</span>
-                    <strong><?php echo $unresolvedCount; ?></strong>
-                </div>
-            </div>
-        </section>
-
-        <section id="safety-visuals" class="dashboard-analysis" data-chart-section aria-labelledby="fleet-safety-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Safety snapshot</span>
-                        <h2 id="fleet-safety-title">Driver behaviour across the network.</h2>
+        <section id="fleet-workspace" class="admin-workspace" aria-label="Fleet manager workspace">
+            <div class="admin-workspace-shell">
+                <nav class="admin-sidebar" aria-label="Dashboard sections">
+                    <div class="admin-sidebar-head">
+                        <span class="admin-sidebar-eyebrow">Workspace</span>
+                        <strong>Fleet control</strong>
                     </div>
-                </div>
-                <div class="dashboard-bento">
+                    <ul class="admin-sidebar-nav" role="tablist">
+                        <li>
+                            <button type="button" class="admin-sidebar-link is-active" data-panel-target="panel-overview" role="tab" aria-selected="true" aria-controls="panel-overview" id="tab-overview">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                                </span>
+                                <span>Overview</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="admin-sidebar-link" data-panel-target="panel-incidents" role="tab" aria-selected="false" aria-controls="panel-incidents" id="tab-incidents">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 1 21h22z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+                                </span>
+                                <span>Incidents</span>
+                                <span class="admin-sidebar-count"><?php echo $unresolvedCount; ?></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="admin-sidebar-link" data-panel-target="panel-drivers" role="tab" aria-selected="false" aria-controls="panel-drivers" id="tab-drivers">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.1"/><line x1="12" y1="4" x2="12" y2="9.6"/><line x1="6.3" y1="15.8" x2="9.8" y2="13.6"/><line x1="17.7" y1="15.8" x2="14.2" y2="13.6"/></svg>
+                                </span>
+                                <span>Drivers</span>
+                                <span class="admin-sidebar-count"><?php echo $totalDrivers; ?></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="admin-sidebar-link" data-panel-target="panel-vehicles" role="tab" aria-selected="false" aria-controls="panel-vehicles" id="tab-vehicles">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="13" height="9" rx="1"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="6" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>
+                                </span>
+                                <span>Vehicles</span>
+                                <span class="admin-sidebar-count"><?php echo $totalVehicles; ?></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="admin-sidebar-link" data-panel-target="panel-assignments" role="tab" aria-selected="false" aria-controls="panel-assignments" id="tab-assignments">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17H7a5 5 0 0 1 0-10h2"/><path d="M15 7h2a5 5 0 0 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                                </span>
+                                <span>Assignments</span>
+                                <span class="admin-sidebar-count"><?php echo $activeAssignments; ?></span>
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+
+                <div class="admin-panels">
+                    <section id="panel-overview" class="admin-panel" role="tabpanel" aria-labelledby="tab-overview">
+                        <div class="admin-panel-head">
+                            <span>Overview</span>
+                            <h2>Driver behaviour across the network.</h2>
+                            <p>Headline counts, safety visualisations, and every driver's monthly score trend.</p>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="dashboard-metrics">
+                                <div>
+                                    <span>Total drivers</span>
+                                    <strong><?php echo $totalDrivers; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Total vehicles</span>
+                                    <strong><?php echo $totalVehicles; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Active assignments</span>
+                                    <strong><?php echo $activeAssignments; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Critical incidents this month</span>
+                                    <strong><?php echo $criticalThisMonth; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Unresolved incidents</span>
+                                    <strong><?php echo $unresolvedCount; ?></strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-panel-block" data-chart-section>
+                            <div class="admin-panel-block-head">
+                                <span>Safety snapshot</span>
+                                <h3>Behaviour events, severity, depot, and trend.</h3>
+                            </div>
+                            <div class="dashboard-bento">
                     <article class="chart-card chart-card-type" data-stack-card>
                         <div class="chart-heading">
                             <div>
@@ -617,45 +668,45 @@ $conn->close();
                     </article>
                 </div>
             </div>
-        </section>
 
-        <section id="driver-score-visuals" class="dashboard-analysis" data-chart-section aria-labelledby="driver-score-trend-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Month over month</span>
-                        <h2 id="driver-score-trend-title">Every driver's safety score, side by side.</h2>
-                    </div>
-                    <p>
-                        One line per driver. Missing months mean that driver had no
-                        recorded score that month, not a score of zero.
-                    </p>
-                </div>
-                <article class="chart-card" data-stack-card style="min-height: 26rem;">
-                    <div class="chart-wrap">
-                        <canvas id="driverScoreTrendChart" role="img" aria-label="Line chart comparing every driver's monthly safety score."></canvas>
-                    </div>
-                </article>
-            </div>
-        </section>
+                        <div class="admin-panel-block" data-chart-section>
+                            <div class="admin-panel-block-head">
+                                <span>Month over month</span>
+                                <h3>Every driver's safety score, side by side.</h3>
+                                <p>
+                                    One line per driver. Missing months mean that driver had no
+                                    recorded score that month, not a score of zero.
+                                </p>
+                            </div>
+                            <article class="chart-card" data-stack-card style="min-height: 26rem;">
+                                <div class="chart-wrap">
+                                    <canvas id="driverScoreTrendChart" role="img" aria-label="Line chart comparing every driver's monthly safety score."></canvas>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
 
-        <section class="admin-directory" aria-labelledby="anomaly-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Statistical anomaly detection</span>
-                        <h2 id="anomaly-title">Score drops vs. each driver's own baseline.</h2>
-                    </div>
-                    <p>
-                        Each driver's monthly score is compared against their own
-                        historical mean and standard deviation (Z-score), not a
-                        fleet-wide threshold. Flags a driver only when this month
-                        is a statistical outlier for <em>them</em>.
-                    </p>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Driver monthly score anomalies</caption>
+                    <section id="panel-incidents" class="admin-panel" role="tabpanel" aria-labelledby="tab-incidents" hidden>
+                        <div class="admin-panel-head">
+                            <span>Incidents</span>
+                            <h2>Review, filter, and resolve.</h2>
+                            <p>Statistical score anomalies and the full searchable incident register.</p>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Statistical anomaly detection</span>
+                                <h3>Score drops vs. each driver's own baseline.</h3>
+                                <p>
+                                    Each driver's monthly score is compared against their own
+                                    historical mean and standard deviation (Z-score), not a
+                                    fleet-wide threshold. Flags a driver only when this month
+                                    is a statistical outlier for <em>them</em>.
+                                </p>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Driver monthly score anomalies</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Driver</th>
@@ -687,25 +738,21 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="incident-review-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Incident review</span>
-                        <h2 id="incident-review-title">Search, filter, and resolve driver incidents.</h2>
-                    </div>
-                    <p>
-                        Filter by driver, vehicle, depot, event type, severity, resolution
-                        status, or date range. Recording a coaching outcome on an
-                        unresolved incident marks it resolved.
-                    </p>
-                </div>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Incident review</span>
+                                <h3>Search, filter, and resolve driver incidents.</h3>
+                                <p>
+                                    Filter by driver, vehicle, depot, event type, severity, resolution
+                                    status, or date range. Recording a coaching outcome on an
+                                    unresolved incident marks it resolved.
+                                </p>
+                            </div>
 
-                <form method="GET" class="directory-toolbar" data-reveal data-stack-card>
+                            <form method="GET" class="directory-toolbar" data-reveal data-stack-card>
                     <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end; width:100%;">
                         <div class="field-group">
                             <label for="f_driver">Driver</label>
@@ -779,7 +826,7 @@ $conn->close();
                             <input type="date" id="f_date_to" name="f_date_to" value="<?php echo escape($filterDateTo); ?>">
                         </div>
                         <button type="submit" class="btn btn-search">Filter</button>
-                        <a href="dashboard_fleet_mgr.php#incident-review-title" class="btn btn-secondary">Reset</a>
+                        <a href="dashboard_fleet_mgr.php#panel-incidents" class="btn btn-secondary">Reset</a>
                     </div>
                 </form>
 
@@ -849,26 +896,30 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
+                    </section>
 
-        <section class="admin-directory" aria-labelledby="risk-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">High-risk drivers</span>
-                        <h2 id="risk-title">Who needs attention, and who needs retraining.</h2>
-                    </div>
-                    <p>
-                        Flagged "High risk" at two or more high/critical incidents, or
-                        any critical incident. Flagged "Retraining" when a coaching
-                        outcome has explicitly recorded it as required.
-                    </p>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Driver risk and retraining summary</caption>
+                    <section id="panel-drivers" class="admin-panel" role="tabpanel" aria-labelledby="tab-drivers" hidden>
+                        <div class="admin-panel-head">
+                            <span>Drivers</span>
+                            <h2>Risk, compliance, and directory.</h2>
+                            <p>Everything tied to individual drivers: risk flags, certification compliance, coaching, and the full roster.</p>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>High-risk drivers</span>
+                                <h3>Who needs attention, and who needs retraining.</h3>
+                                <p>
+                                    Flagged "High risk" at two or more high/critical incidents, or
+                                    any critical incident. Flagged "Retraining" when a coaching
+                                    outcome has explicitly recorded it as required.
+                                </p>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Driver risk and retraining summary</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Driver</th>
@@ -912,21 +963,17 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="patterns-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Risk patterns</span>
-                        <h2 id="patterns-title">Repeat speeding, and vehicles tied to severe incidents.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Drivers with repeated speeding incidents</caption>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Risk patterns</span>
+                                <h3>Repeat speeding drivers.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Drivers with repeated speeding incidents</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Driver</th>
@@ -950,50 +997,17 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card style="margin-top:1.5rem;">
-                    <table class="admin-table">
-                        <caption class="sr-only">Vehicles associated with severe incidents</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">Vehicle</th>
-                                <th scope="col">Category</th>
-                                <th scope="col">Depot</th>
-                                <th scope="col">Severe incidents</th>
-                                <th scope="col">Most recent</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($severeIncidentVehicles): ?>
-                                <?php foreach ($severeIncidentVehicles as $row): ?>
-                                    <tr>
-                                        <td class="cell-strong"><?php echo escape($row['VehiclePlate']); ?></td>
-                                        <td><?php echo escape($row['VehicleCategory'] ?? '—'); ?></td>
-                                        <td><?php echo escape($row['DepotName'] ?? '—'); ?></td>
-                                        <td><?php echo (int) $row['SevereIncidentCount']; ?></td>
-                                        <td><?php echo escape((string) $row['MostRecentSevereIncident']); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="5" class="empty-row">No vehicles associated with severe incidents.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="compliance-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Certification compliance</span>
-                        <h2 id="compliance-title">Expired certifications, and drivers outside their authorised category.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Drivers with expired certifications</caption>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Certification compliance</span>
+                                <h3>Expired certifications, and drivers outside their authorised category.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Drivers with expired certifications</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Driver</th>
@@ -1046,27 +1060,23 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="coaching-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Coaching &amp; training compliance</span>
-                        <h2 id="coaching-title">Score-driven coaching and training requirements.</h2>
-                    </div>
-                    <p>
-                        A driver whose most recent monthly score is 75 or below must
-                        attend driver coaching. At 50 or below, the database blocks
-                        any new vehicle assignment for that driver until they
-                        complete safety training.
-                    </p>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Drivers requiring coaching or safety training</caption>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Coaching &amp; training compliance</span>
+                                <h3>Score-driven coaching and training requirements.</h3>
+                                <p>
+                                    A driver whose most recent monthly score is 75 or below must
+                                    attend driver coaching. At 50 or below, the database blocks
+                                    any new vehicle assignment for that driver until they
+                                    complete safety training.
+                                </p>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Drivers requiring coaching or safety training</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Driver</th>
@@ -1096,21 +1106,17 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="driver-directory-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Driver activity</span>
-                        <h2 id="driver-directory-title">Directory and employment status.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Driver directory</caption>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Driver activity</span>
+                                <h3>Directory and employment status.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Driver directory</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Driver</th>
@@ -1169,21 +1175,61 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
+                    </section>
 
-        <section class="admin-directory" aria-labelledby="vehicle-directory-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Vehicle activity</span>
-                        <h2 id="vehicle-directory-title">Directory and operational status.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Vehicle directory</caption>
+                    <section id="panel-vehicles" class="admin-panel" role="tabpanel" aria-labelledby="tab-vehicles" hidden>
+                        <div class="admin-panel-head">
+                            <span>Vehicles</span>
+                            <h2>Fleet directory and risk exposure.</h2>
+                            <p>Vehicles tied to severe incidents, plus the full vehicle directory and operational status.</p>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Risk patterns</span>
+                                <h3>Vehicles tied to severe incidents.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Vehicles associated with severe incidents</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Vehicle</th>
+                                            <th scope="col">Category</th>
+                                            <th scope="col">Depot</th>
+                                            <th scope="col">Severe incidents</th>
+                                            <th scope="col">Most recent</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if ($severeIncidentVehicles): ?>
+                                            <?php foreach ($severeIncidentVehicles as $row): ?>
+                                                <tr>
+                                                    <td class="cell-strong"><?php echo escape($row['VehiclePlate']); ?></td>
+                                                    <td><?php echo escape($row['VehicleCategory'] ?? '—'); ?></td>
+                                                    <td><?php echo escape($row['DepotName'] ?? '—'); ?></td>
+                                                    <td><?php echo (int) $row['SevereIncidentCount']; ?></td>
+                                                    <td><?php echo escape((string) $row['MostRecentSevereIncident']); ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr><td colspan="5" class="empty-row">No vehicles associated with severe incidents.</td></tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Vehicle activity</span>
+                                <h3>Directory and operational status.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Vehicle directory</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Vehicle</th>
@@ -1234,20 +1280,19 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
+                    </section>
 
-        <section class="admin-directory" aria-labelledby="assignment-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Assignment management</span>
-                        <h2 id="assignment-title">Connect drivers to vehicles.</h2>
-                    </div>
-                </div>
+                    <section id="panel-assignments" class="admin-panel" role="tabpanel" aria-labelledby="tab-assignments" hidden>
+                        <div class="admin-panel-head">
+                            <span>Assignments</span>
+                            <h2>Connect drivers to vehicles.</h2>
+                            <p>Create new driver-vehicle assignments and manage the ones currently active.</p>
+                        </div>
 
-                <form method="POST" class="directory-toolbar" data-reveal data-stack-card>
+                        <div class="admin-panel-block">
+                            <form method="POST" class="directory-toolbar" data-reveal data-stack-card>
                     <input type="hidden" name="action" value="create_assignment">
                     <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
                         <div class="field-group">
@@ -1308,6 +1353,9 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </section>
@@ -1434,6 +1482,55 @@ $conn->close();
                 scales: { y: { min: 0, max: 100 } }
             }
         });
+    </script>
+    <script>
+        (function () {
+            const tabs = Array.from(document.querySelectorAll('[data-panel-target]'));
+            const panelIds = tabs.map((tab) => tab.getAttribute('data-panel-target'));
+
+            function activatePanel(panelId, focusTab) {
+                if (!panelIds.includes(panelId)) {
+                    return;
+                }
+
+                tabs.forEach((tab) => {
+                    const isMatch = tab.getAttribute('data-panel-target') === panelId;
+                    tab.classList.toggle('is-active', isMatch);
+                    tab.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+
+                    const panel = document.getElementById(tab.getAttribute('data-panel-target'));
+                    if (!panel) {
+                        return;
+                    }
+
+                    if (isMatch) {
+                        panel.hidden = false;
+                        panel.querySelectorAll('canvas').forEach((canvas) => {
+                            const chart = window.Chart && Chart.getChart ? Chart.getChart(canvas) : null;
+                            if (chart) {
+                                chart.resize();
+                            }
+                        });
+                        if (focusTab) {
+                            tab.focus();
+                        }
+                    } else {
+                        panel.hidden = true;
+                    }
+                });
+            }
+
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => {
+                    activatePanel(tab.getAttribute('data-panel-target'), false);
+                });
+            });
+
+            const initialHash = window.location.hash.replace('#', '');
+            if (panelIds.includes(initialHash)) {
+                activatePanel(initialHash, false);
+            }
+        })();
     </script>
     <?php renderSiteMotionScripts(); ?>
 </body>
