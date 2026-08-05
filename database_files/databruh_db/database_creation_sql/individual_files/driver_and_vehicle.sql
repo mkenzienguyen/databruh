@@ -113,3 +113,14 @@ CREATE TABLE behaviour_event (
     
 );
 
+CREATE TABLE coaching_log (
+    CoachingID INT AUTO_INCREMENT PRIMARY KEY,
+    DriverID VARCHAR(50) NOT NULL,
+    EventID INT NULL,
+    CoachDate DATE NOT NULL,
+    ConductedBy VARCHAR(255),
+    Outcome VARCHAR(50) NOT NULL,
+    Notes TEXT,
+    FOREIGN KEY (DriverID) REFERENCES driver(DriverID) ON DELETE CASCADE,
+    FOREIGN KEY (EventID) REFERENCES behaviour_event(EventID) ON DELETE SET NULL
+);
