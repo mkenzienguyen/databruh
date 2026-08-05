@@ -1,10 +1,11 @@
 -- =====================================================================
 -- SUGGESTED INDEXES — databruh_db
 -- =====================================================================
--- This file is a proposal only. It is NOT included in the creation/
--- insertion/views scripts and is NOT run automatically by anything in
--- this project. Nothing here has been applied to the working database.
--- Apply manually with, e.g.:
+USE databruh_db;
+
+-- This file is an optional, repeatable upgrade. It is NOT included in the
+-- creation/insertion/views scripts and is NOT run automatically by anything
+-- in this project. Apply it manually after pulling schema updates, e.g.:
 --   mysql -u root databruh_db < suggested_indexes.sql
 --
 -- Method: every WHERE / JOIN ON / ORDER BY / GROUP BY column actually
@@ -43,7 +44,7 @@
 --     dashboard_ws_mgr.php, dashboard_driver.php)
 -- A composite index lets a status-filtered, time-ordered query use a
 -- single index instead of a full scan + filesort.
-CREATE INDEX idx_alert_status_timestamp ON alert (Status, AlertTimestamp);
+CREATE INDEX IF NOT EXISTS idx_alert_status_timestamp ON alert (Status, AlertTimestamp);
 
 
 -- ---------------------------------------------------------------------
@@ -55,11 +56,11 @@ CREATE INDEX idx_alert_status_timestamp ON alert (Status, AlertTimestamp);
 -- Serves:
 --   - "SELECT COUNT(*) FROM maintenance_job WHERE Status <> 'Closed'"
 --     (dashboard_admin.php, dashboard_ws_mgr.php)
-CREATE INDEX idx_maintenance_job_status ON maintenance_job (Status);
+CREATE INDEX IF NOT EXISTS idx_maintenance_job_status ON maintenance_job (Status);
 
 --   - "... ORDER BY mj.StartDate DESC" on the full jobs listing
 --     (dashboard_admin.php, dashboard_ws_mgr.php)
-CREATE INDEX idx_maintenance_job_startdate ON maintenance_job (StartDate);
+CREATE INDEX IF NOT EXISTS idx_maintenance_job_startdate ON maintenance_job (StartDate);
 
 
 -- ---------------------------------------------------------------------
@@ -78,7 +79,7 @@ CREATE INDEX idx_maintenance_job_startdate ON maintenance_job (StartDate);
 --   - "LEFT JOIN vehicle_driver_assignment vda ON v.VehicleID =
 --     vda.VehicleID AND vda.EndDate IS NULL" (vehicle directory,
 --     dashboard_fleet_mgr.php)
-CREATE INDEX idx_vda_vehicle_enddate ON vehicle_driver_assignment (VehicleID, EndDate);
+CREATE INDEX IF NOT EXISTS idx_vda_vehicle_enddate ON vehicle_driver_assignment (VehicleID, EndDate);
 
 -- Serves (driver -> current vehicle):
 --   - "LEFT JOIN vehicle_driver_assignment vda ON d.DriverID =
@@ -87,7 +88,7 @@ CREATE INDEX idx_vda_vehicle_enddate ON vehicle_driver_assignment (VehicleID, En
 --   - "JOIN vehicle_driver_assignment vda ON a.VehicleID =
 --     vda.VehicleID WHERE vda.DriverID = ? AND vda.EndDate IS NULL"
 --     (dashboard_driver.php — alerts on the driver's current vehicle)
-CREATE INDEX idx_vda_driver_enddate ON vehicle_driver_assignment (DriverID, EndDate);
+CREATE INDEX IF NOT EXISTS idx_vda_driver_enddate ON vehicle_driver_assignment (DriverID, EndDate);
 
 -- Also serves the plain "WHERE EndDate IS NULL" / "ORDER BY StartDate
 -- DESC" active-assignments listing (dashboard_fleet_mgr.php) as a
@@ -104,15 +105,15 @@ CREATE INDEX idx_vda_driver_enddate ON vehicle_driver_assignment (DriverID, EndD
 --
 -- Serves: "ORDER BY d.FullName" (dashboard_fleet_mgr.php driver
 -- directory, signup.php driver dropdown)
-CREATE INDEX idx_driver_fullname ON driver (FullName);
+CREATE INDEX IF NOT EXISTS idx_driver_fullname ON driver (FullName);
 
 -- Serves: "ORDER BY m.FullName" (dashboard_admin.php / dashboard_ws_mgr.php
 -- mechanic workload table, signup.php mechanic dropdown)
-CREATE INDEX idx_mechanic_worker_fullname ON mechanic_worker (FullName);
+CREATE INDEX IF NOT EXISTS idx_mechanic_worker_fullname ON mechanic_worker (FullName);
 
 -- Serves: "ORDER BY p.PartName" (dashboard_admin.php / dashboard_ws_mgr.php
 -- parts & suppliers table)
-CREATE INDEX idx_part_partname ON part (PartName);
+CREATE INDEX IF NOT EXISTS idx_part_partname ON part (PartName);
 
 
 -- ---------------------------------------------------------------------
@@ -122,7 +123,7 @@ CREATE INDEX idx_part_partname ON part (PartName);
 -- view_driver_incidents "WHERE DriverID = ? ORDER BY Timestamp DESC"):
 -- a composite beats the existing single-column DriverID index because
 -- it also covers the ORDER BY without a separate sort step.
-CREATE INDEX idx_behaviour_event_driver_timestamp ON behaviour_event (DriverID, Timestamp);
+CREATE INDEX IF NOT EXISTS idx_behaviour_event_driver_timestamp ON behaviour_event (DriverID, Timestamp);
 
 -- NOTE — query rewrite needed, not just an index:
 -- dashboard_fleet_mgr.php's "critical incidents this month" stat does
@@ -154,7 +155,7 @@ CREATE INDEX idx_behaviour_event_driver_timestamp ON behaviour_event (DriverID, 
 --      view_active_warranty_ledger views) has to combine two separate
 --      single-column indexes instead of seeking a single composite one.
 -- A composite UNIQUE index fixes both at once:
-CREATE UNIQUE INDEX idx_supplier_product_list_part_partner ON supplier_product_list (PartID, PartnerID);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_supplier_product_list_part_partner ON supplier_product_list (PartID, PartnerID);
 
 
 -- =====================================================================
