@@ -38,6 +38,31 @@ Notes:
   - `database_files/databruh_db/database_creation_sql/workshop_operations.sql` — adds the `maintenance_schedule_rule` table, `part.QuantityOnHand`/`ReorderThreshold` columns, and `activity_instance_part_used.SupplierID` used by the workshop manager dashboard.
   - `database_files/databruh_db/database_creation_sql/business_rules.sql` — adds the assignment-eligibility triggers, computed monthly scoring, and the schema additions described above.
 
+### Updating an existing database after `git pull`
+
+Do **not** re-run `full_creation_script.sql` or `password_entity.sql` against a
+database that contains work you want to keep; both are reset scripts. Back up
+the databases first, then apply the non-destructive upgrade scripts in this
+order:
+
+```bash
+mysql -u root < database_files/databruh_password_db/add_linked_id_migration.sql
+mysql -u root < database_files/databruh_db/database_basic_views_sql/basic_views.sql
+mysql -u root < database_files/databruh_db/suggested_indexes.sql
+```
+
+- The `LinkedID` migration checks the live column and unique-index structure
+  before changing anything.
+- The view script uses `CREATE OR REPLACE VIEW`, so pulled view definitions are
+  refreshed without replacing fleet records.
+- The index script uses `IF NOT EXISTS`, so it is safe to repeat on XAMPP's
+  MariaDB. Index creation can briefly lock a large table; run it during a quiet
+  period on a production-sized database.
+- MariaDB DDL auto-commits. Views can be rolled back by running the previous
+  `basic_views.sql`; optional indexes can be removed with `DROP INDEX ... ON
+  table_name`. Do not drop `LinkedID` after accounts use it, because that would
+  discard account-to-driver/mechanic mappings.
+
 Alternatively, from a terminal with the `mysql` CLI (adjust the path to your XAMPP's `mysql` binary if it's not on your `PATH`):
 
 ```bash

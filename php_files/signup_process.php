@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/includes/password_policy.php';
+
 $host = "localhost";
 $username = "root";
 $password = "";
