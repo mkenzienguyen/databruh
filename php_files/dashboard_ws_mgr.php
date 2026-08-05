@@ -399,6 +399,7 @@ $conn->close();
     <link rel="stylesheet" href="../css_files/role_dashboards.css">
     <link rel="stylesheet" href="../css_files/minimalist_theme.css">
     <link rel="stylesheet" href="../css_files/swiss_bento_theme.css">
+    <link rel="stylesheet" href="../css_files/admin_sidebar.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
     <script>
         function confirmSelectChange(selectElement, label) {
@@ -438,44 +439,112 @@ $conn->close();
             </div>
         <?php endif; ?>
 
-        <section id="dashboard-summary" class="dashboard-summary" aria-label="Dashboard summary">
-            <div class="dashboard-metrics">
-                <div>
-                    <span>Open alerts</span>
-                    <strong><?php echo $openAlerts; ?></strong>
-                </div>
-                <div>
-                    <span>Active maintenance jobs</span>
-                    <strong><?php echo $activeJobs; ?></strong>
-                </div>
-                <div>
-                    <span>Vehicles in maintenance</span>
-                    <strong><?php echo $vehiclesInMaintenance; ?></strong>
-                </div>
-                <div>
-                    <span>Mechanics on staff</span>
-                    <strong><?php echo $mechanicsOnStaff; ?></strong>
-                </div>
-                <div>
-                    <span>Vehicles needing urgent repair</span>
-                    <strong><?php echo $urgentRepairVehicleCount; ?></strong>
-                </div>
-                <div>
-                    <span>Parts below reorder threshold</span>
-                    <strong><?php echo count($partsBelowReorder); ?></strong>
-                </div>
-            </div>
-        </section>
-
-        <section class="admin-directory" aria-labelledby="alerts-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Predictive alerts</span>
-                        <h2 id="alerts-title">Prioritise and escalate into jobs.</h2>
+        <section id="ws-workspace" class="admin-workspace" aria-label="Workshop manager workspace">
+            <div class="admin-workspace-shell">
+                <nav class="admin-sidebar" aria-label="Dashboard sections">
+                    <div class="admin-sidebar-head">
+                        <span class="admin-sidebar-eyebrow">Workspace</span>
+                        <strong>Workshop control</strong>
                     </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
+                    <ul class="admin-sidebar-nav" role="tablist">
+                        <li>
+                            <button type="button" class="admin-sidebar-link is-active" data-panel-target="panel-overview" role="tab" aria-selected="true" aria-controls="panel-overview" id="tab-overview">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                                </span>
+                                <span>Overview</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="admin-sidebar-link" data-panel-target="panel-alerts-jobs" role="tab" aria-selected="false" aria-controls="panel-alerts-jobs" id="tab-alerts-jobs">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 1 21h22z"/><line x1="12" y1="9.5" x2="12" y2="14"/><circle cx="12" cy="17.3" r="0.6" fill="currentColor" stroke="none"/></svg>
+                                </span>
+                                <span>Alerts &amp; jobs</span>
+                                <span class="admin-sidebar-count"><?php echo $openAlerts; ?></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="admin-sidebar-link" data-panel-target="panel-activities" role="tab" aria-selected="false" aria-controls="panel-activities" id="tab-activities">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.8 2.8-2-2z"/></svg>
+                                </span>
+                                <span>Job activities</span>
+                                <span class="admin-sidebar-count"><?php echo count($jobActivities); ?></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="admin-sidebar-link" data-panel-target="panel-workforce" role="tab" aria-selected="false" aria-controls="panel-workforce" id="tab-workforce">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17.5" cy="9" r="2.3"/><path d="M15.7 13.3c2.5.4 4.3 2.4 4.3 4.8"/></svg>
+                                </span>
+                                <span>Workforce</span>
+                                <span class="admin-sidebar-count"><?php echo $mechanicsOnStaff; ?></span>
+                            </button>
+                        </li>
+                        <li>
+                            <button type="button" class="admin-sidebar-link" data-panel-target="panel-parts" role="tab" aria-selected="false" aria-controls="panel-parts" id="tab-parts">
+                                <span class="admin-sidebar-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><line x1="12" y1="13" x2="12" y2="21"/></svg>
+                                </span>
+                                <span>Parts &amp; suppliers</span>
+                                <span class="admin-sidebar-count"><?php echo count($partsBelowReorder); ?></span>
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+
+                <div class="admin-panels">
+                    <section id="panel-overview" class="admin-panel" role="tabpanel" aria-labelledby="tab-overview">
+                        <div class="admin-panel-head">
+                            <span>Overview</span>
+                            <h2>Where the workshop stands right now.</h2>
+                            <p>Open alerts, active jobs, staffing, and parts that need attention.</p>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="dashboard-metrics">
+                                <div>
+                                    <span>Open alerts</span>
+                                    <strong><?php echo $openAlerts; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Active maintenance jobs</span>
+                                    <strong><?php echo $activeJobs; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Vehicles in maintenance</span>
+                                    <strong><?php echo $vehiclesInMaintenance; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Mechanics on staff</span>
+                                    <strong><?php echo $mechanicsOnStaff; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Vehicles needing urgent repair</span>
+                                    <strong><?php echo $urgentRepairVehicleCount; ?></strong>
+                                </div>
+                                <div>
+                                    <span>Parts below reorder threshold</span>
+                                    <strong><?php echo count($partsBelowReorder); ?></strong>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="panel-alerts-jobs" class="admin-panel" role="tabpanel" aria-labelledby="tab-alerts-jobs" hidden>
+                        <div class="admin-panel-head">
+                            <span>Alerts &amp; jobs</span>
+                            <h2>From predictive alert to closed job.</h2>
+                            <p>Prioritise alerts, triage urgent vehicles, and track jobs through to close.</p>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Predictive alerts</span>
+                                <h3>Prioritise and escalate into jobs.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
                     <table class="admin-table">
                         <caption class="sr-only">Alerts and their status</caption>
                         <thead>
@@ -546,21 +615,17 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="urgent-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Urgent attention</span>
-                        <h2 id="urgent-title">Vehicles needing urgent repair, and vehicles awaiting inspection.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Vehicles requiring urgent repair</caption>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Urgent attention</span>
+                                <h3>Vehicles needing urgent repair, and vehicles awaiting inspection.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Vehicles requiring urgent repair</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Vehicle</th>
@@ -617,21 +682,17 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="jobs-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Maintenance jobs</span>
-                        <h2 id="jobs-title">Track status, downtime, and cost.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Maintenance jobs</caption>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Maintenance jobs</span>
+                                <h3>Track status, downtime, and cost.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Maintenance jobs</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Vehicle</th>
@@ -681,25 +742,23 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
+                    </section>
 
-        <section class="admin-directory" aria-labelledby="activities-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Job activities</span>
-                        <h2 id="activities-title">Allocate mechanics, and record parts usage.</h2>
-                    </div>
-                    <p>
-                        Add an activity to an open job and assign a mechanic. Check the
-                        "Mechanic certifications" table further down before assigning
-                        work that needs a specific licence.
-                    </p>
-                </div>
+                    <section id="panel-activities" class="admin-panel" role="tabpanel" aria-labelledby="tab-activities" hidden>
+                        <div class="admin-panel-head">
+                            <span>Job activities</span>
+                            <h2>Allocate mechanics, and record parts usage.</h2>
+                            <p>
+                                Add an activity to an open job and assign a mechanic. Check the
+                                "Mechanic certifications" table in the Workforce tab before
+                                assigning work that needs a specific licence.
+                            </p>
+                        </div>
 
-                <?php if ($openJobs): ?>
+                        <div class="admin-panel-block">
+                        <?php if ($openJobs): ?>
                     <form method="POST" class="directory-toolbar" data-reveal data-stack-card>
                         <input type="hidden" name="action" value="add_job_activity">
                         <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
@@ -835,21 +894,25 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
+                    </section>
 
-        <section class="admin-directory" aria-labelledby="mechanic-workload-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Workforce</span>
-                        <h2 id="mechanic-workload-title">Workshop and mechanic workload.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Workshop workload</caption>
+                    <section id="panel-workforce" class="admin-panel" role="tabpanel" aria-labelledby="tab-workforce" hidden>
+                        <div class="admin-panel-head">
+                            <span>Workforce</span>
+                            <h2>Workload and certification status.</h2>
+                            <p>Workshop and mechanic workload, plus who's certified for what.</p>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Workforce</span>
+                                <h3>Workshop and mechanic workload.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Workshop workload</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Workshop</th>
@@ -900,20 +963,64 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="parts-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Parts and suppliers</span>
-                        <h2 id="parts-title">Stock, primary supplier, and unit cost.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Workforce compliance</span>
+                                <h3>Mechanic certifications.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Mechanic certifications</caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Mechanic</th>
+                                            <th scope="col">Workshop</th>
+                                            <th scope="col">Certification</th>
+                                            <th scope="col">Expires</th>
+                                            <th scope="col">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if ($mechanicCertifications): ?>
+                                            <?php foreach ($mechanicCertifications as $row): ?>
+                                                <tr>
+                                                    <td class="cell-strong"><?php echo escape($row['MechanicName']); ?></td>
+                                                    <td><?php echo escape($row['WorkshopName'] ?? '—'); ?></td>
+                                                    <td><?php echo escape($row['QualificationName']); ?></td>
+                                                    <td><?php echo escape((string) $row['ExpiryDate']); ?></td>
+                                                    <td>
+                                                        <span class="status-pill status-<?php echo statusSlug($row['QualificationStatus']); ?>">
+                                                            <?php echo escape($row['QualificationStatus']); ?>
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr><td colspan="5" class="empty-row">No mechanic certifications recorded.</td></tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="panel-parts" class="admin-panel" role="tabpanel" aria-labelledby="tab-parts" hidden>
+                        <div class="admin-panel-head">
+                            <span>Parts &amp; suppliers</span>
+                            <h2>Stock, cost, and supplier reliability.</h2>
+                            <p>Reorder thresholds, supplier performance, maintenance cost by model, and service compliance.</p>
+                        </div>
+
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Parts and suppliers</span>
+                                <h3>Stock, primary supplier, and unit cost.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
                         <caption class="sr-only">Parts and suppliers</caption>
                         <thead>
                             <tr>
@@ -943,26 +1050,22 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="supplier-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Supplier performance</span>
-                        <h2 id="supplier-title">Units supplied and warranty claim history.</h2>
-                    </div>
-                    <p>
-                        Units supplied is attributed to whichever supplier actually
-                        fulfilled each recorded parts usage, so this stays accurate
-                        even after a part's primary supplier changes.
-                    </p>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Supplier performance</caption>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Supplier performance</span>
+                                <h3>Units supplied and warranty claim history.</h3>
+                                <p>
+                                    Units supplied is attributed to whichever supplier actually
+                                    fulfilled each recorded parts usage, so this stays accurate
+                                    even after a part's primary supplier changes.
+                                </p>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Supplier performance</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Supplier</th>
@@ -990,19 +1093,15 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section id="safety-visuals" class="dashboard-analysis" data-chart-section aria-labelledby="cost-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Cost comparison</span>
-                        <h2 id="cost-title">Maintenance cost by vehicle model.</h2>
-                    </div>
-                </div>
-                <article class="chart-card" data-stack-card style="min-height: 22rem;">
+                        <div class="admin-panel-block" data-chart-section>
+                            <div class="admin-panel-block-head">
+                                <span>Cost comparison</span>
+                                <h3>Maintenance cost by vehicle model.</h3>
+                            </div>
+                            <article class="chart-card" data-stack-card style="min-height: 22rem;">
                     <div class="chart-heading">
                         <div>
                             <span>Closed jobs only</span>
@@ -1043,21 +1142,17 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
+                            </div>
+                        </div>
 
-        <section class="admin-directory" aria-labelledby="overdue-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Service compliance</span>
-                        <h2 id="overdue-title">Overdue for service, and repeated component failures.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Vehicles overdue for service</caption>
+                        <div class="admin-panel-block">
+                            <div class="admin-panel-block-head">
+                                <span>Service compliance</span>
+                                <h3>Overdue for service, and repeated component failures.</h3>
+                            </div>
+                            <div class="admin-table-shell" data-reveal data-stack-card>
+                                <table class="admin-table">
+                                    <caption class="sr-only">Vehicles overdue for service</caption>
                         <thead>
                             <tr>
                                 <th scope="col">Vehicle</th>
@@ -1112,50 +1207,9 @@ $conn->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
-
-        <section class="admin-directory" aria-labelledby="certs-title">
-            <div class="section-shell">
-                <div class="chapter-heading">
-                    <div>
-                        <span class="section-kicker">Workforce compliance</span>
-                        <h2 id="certs-title">Mechanic certifications.</h2>
-                    </div>
-                </div>
-                <div class="admin-table-shell" data-reveal data-stack-card>
-                    <table class="admin-table">
-                        <caption class="sr-only">Mechanic certifications</caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">Mechanic</th>
-                                <th scope="col">Workshop</th>
-                                <th scope="col">Certification</th>
-                                <th scope="col">Expires</th>
-                                <th scope="col">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if ($mechanicCertifications): ?>
-                                <?php foreach ($mechanicCertifications as $row): ?>
-                                    <tr>
-                                        <td class="cell-strong"><?php echo escape($row['MechanicName']); ?></td>
-                                        <td><?php echo escape($row['WorkshopName'] ?? '—'); ?></td>
-                                        <td><?php echo escape($row['QualificationName']); ?></td>
-                                        <td><?php echo escape((string) $row['ExpiryDate']); ?></td>
-                                        <td>
-                                            <span class="status-pill status-<?php echo statusSlug($row['QualificationStatus']); ?>">
-                                                <?php echo escape($row['QualificationStatus']); ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <tr><td colspan="5" class="empty-row">No mechanic certifications recorded.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+                            </div>
+                        </div>
+                    </section>
                 </div>
             </div>
         </section>
@@ -1188,6 +1242,55 @@ $conn->close();
                 plugins: { legend: { display: false } }
             }
         });
+    </script>
+    <script>
+        (function () {
+            const tabs = Array.from(document.querySelectorAll('[data-panel-target]'));
+            const panelIds = tabs.map((tab) => tab.getAttribute('data-panel-target'));
+
+            function activatePanel(panelId, focusTab) {
+                if (!panelIds.includes(panelId)) {
+                    return;
+                }
+
+                tabs.forEach((tab) => {
+                    const isMatch = tab.getAttribute('data-panel-target') === panelId;
+                    tab.classList.toggle('is-active', isMatch);
+                    tab.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+
+                    const panel = document.getElementById(tab.getAttribute('data-panel-target'));
+                    if (!panel) {
+                        return;
+                    }
+
+                    if (isMatch) {
+                        panel.hidden = false;
+                        panel.querySelectorAll('canvas').forEach((canvas) => {
+                            const chart = window.Chart && Chart.getChart ? Chart.getChart(canvas) : null;
+                            if (chart) {
+                                chart.resize();
+                            }
+                        });
+                        if (focusTab) {
+                            tab.focus();
+                        }
+                    } else {
+                        panel.hidden = true;
+                    }
+                });
+            }
+
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => {
+                    activatePanel(tab.getAttribute('data-panel-target'), false);
+                });
+            });
+
+            const initialHash = window.location.hash.replace('#', '');
+            if (panelIds.includes(initialHash)) {
+                activatePanel(initialHash, false);
+            }
+        })();
     </script>
     <?php renderSiteMotionScripts(); ?>
 </body>
