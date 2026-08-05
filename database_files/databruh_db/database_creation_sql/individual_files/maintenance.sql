@@ -84,7 +84,6 @@ CREATE TABLE activity_instance (
     FOREIGN KEY (ActivityTypeID) REFERENCES activity_type(ActivityTypeID)
 );
 
-
 CREATE TABLE activity_instance_worker_assigned (
     ActivityID INT NOT NULL,
     MechanicID VARCHAR(50) NOT NULL,
@@ -92,4 +91,16 @@ CREATE TABLE activity_instance_worker_assigned (
     PRIMARY KEY (ActivityID, MechanicID),
     FOREIGN KEY (ActivityID) REFERENCES activity_instance(ActivityID) ON DELETE CASCADE,
     FOREIGN KEY (MechanicID) REFERENCES mechanic_worker(MechanicID) ON DELETE CASCADE
+);
+
+
+
+-- Per-classification service interval, used to flag overdue vehicles.
+CREATE TABLE maintenance_schedule_rule (
+    RuleID INT AUTO_INCREMENT PRIMARY KEY,
+    ClassificationID INT NOT NULL,
+    IntervalDays INT NOT NULL,
+    Description VARCHAR(255),
+    FOREIGN KEY (ClassificationID) REFERENCES vehicle_classification(ClassificationID) ON DELETE CASCADE,
+    UNIQUE KEY unique_classification_rule (ClassificationID)
 );

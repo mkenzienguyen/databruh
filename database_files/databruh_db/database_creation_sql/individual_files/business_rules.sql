@@ -1,33 +1,4 @@
 USE databruh_db;
-
--- Enforces at the DB layer: no assignment to a vehicle Under
--- Maintenance/Out of Service; driver must hold required, unexpired
--- certifications; driver safety score must be above 50; no unresolved
--- critical event. Also computes monthly_score_log from behaviour_event
--- instead of hand-entry. Safe to re-run.
-
--- 1. Schema additions
-
--- One workshop per depot.
-ALTER TABLE workshop
-    ADD UNIQUE INDEX IF NOT EXISTS uq_workshop_depot (DepotID);
-
-ALTER TABLE activity_instance
-    ADD COLUMN IF NOT EXISTS RepeatFault BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS WarrantyApplicable BOOLEAN NOT NULL DEFAULT FALSE;
-
--- Labour hours per mechanic per activity, not one total per activity.
--- activity_instance.LabourHours is kept in sync as the sum (trigger below).
-ALTER TABLE activity_instance_worker_assigned
-    ADD COLUMN IF NOT EXISTS LabourHours DECIMAL(4,2) NULL;
-
-UPDATE activity_instance_worker_assigned aiwa
-JOIN activity_instance ai ON aiwa.ActivityID = ai.ActivityID
-SET aiwa.LabourHours = ai.LabourHours
-WHERE aiwa.LabourHours IS NULL;
-
--- 2. Keep activity_instance.LabourHours in sync with per-mechanic hours
-
 DELIMITER $$
 
 DROP TRIGGER IF EXISTS trg_activity_worker_hours_after_insert$$
