@@ -3,6 +3,14 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/auth.php';
 
+// Show real error messages on localhost instead of a bare HTTP 500.
+// XAMPP ships with display_errors off, which turns every fatal into a
+// blank page. Disabled automatically anywhere that isn't localhost.
+if (in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1', '::1'], true)) {
+    ini_set('display_errors', '1');
+    error_reporting(E_ALL);
+}
+
 if (!function_exists('layoutEscape')) {
     function layoutEscape(string $value): string
     {
