@@ -122,7 +122,10 @@ CREATE TABLE workshop (
     WorkshopName VARCHAR(255) NOT NULL,
     WorkshopAddress VARCHAR(255),
     DepotID INT,
-    FOREIGN KEY (DepotID) REFERENCES depot_location(DepotID) ON DELETE SET NULL
+    FOREIGN KEY (DepotID) REFERENCES depot_location(DepotID) ON DELETE SET NULL,
+    -- One workshop per depot, per "The company operates one workshop
+    -- per depot" in the brief.
+    UNIQUE KEY uq_workshop_depot (DepotID)
 );
 
 
@@ -193,8 +196,17 @@ CREATE TABLE activity_instance (
     ActivityID INT AUTO_INCREMENT PRIMARY KEY,
     JobID INT NOT NULL,
     ActivityTypeID INT NOT NULL,
+    -- Kept in sync with SUM(activity_instance_worker_assigned.LabourHours)
+    -- by trg_activity_worker_hours_after_* in business_rules.sql, so
+    -- existing per-activity queries keep working unchanged even though
+    -- hours are now recorded per mechanic underneath.
     LabourHours DECIMAL(4,2),
     DiagnosticResult TEXT,
+    -- Simple per-activity indicators from the brief's Activity-Level
+    -- Information list. The warranty_claim/warranty_part_list tables
+    -- (extension task) still carry the detailed claim.
+    RepeatFault BOOLEAN NOT NULL DEFAULT FALSE,
+    WarrantyApplicable BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (JobID) REFERENCES maintenance_job(JobID) ON DELETE CASCADE,
     FOREIGN KEY (ActivityTypeID) REFERENCES activity_type(ActivityTypeID)
 );
@@ -203,6 +215,10 @@ CREATE TABLE activity_instance (
 CREATE TABLE activity_instance_worker_assigned (
     ActivityID INT NOT NULL,
     MechanicID VARCHAR(50) NOT NULL,
+    -- Labour hours logged by this specific mechanic on this activity,
+    -- matching the brief's example (two mechanics on one brake service,
+    -- each logging their own hours) rather than one total per activity.
+    LabourHours DECIMAL(4,2) NULL,
     PRIMARY KEY (ActivityID, MechanicID),
     FOREIGN KEY (ActivityID) REFERENCES activity_instance(ActivityID) ON DELETE CASCADE,
     FOREIGN KEY (MechanicID) REFERENCES mechanic_worker(MechanicID) ON DELETE CASCADE
@@ -226,6 +242,8 @@ CREATE TABLE part (
     PartName VARCHAR(255),
     PrimarySupplierID INT NOT NULL,
     BackupSupplierID INT,
+    QuantityOnHand INT NOT NULL DEFAULT 0,
+    ReorderThreshold INT NOT NULL DEFAULT 0,
     FOREIGN KEY (PrimarySupplierID) REFERENCES partner_company(PartnerID) ON DELETE CASCADE,
     FOREIGN KEY (BackupSupplierID) REFERENCES partner_company(PartnerID) ON DELETE CASCADE
 );
@@ -264,8 +282,44 @@ CREATE TABLE activity_instance_part_used (
     ActivityID INT NOT NULL,
     PartID INT NOT NULL,
     QuantityUsed INT,
+    -- Which supplier fulfilled this specific usage, captured at record
+    -- time. Kept separate from part.PrimarySupplierID (which can change
+    -- later) so historical consumption stays attributed correctly even
+    -- after a part's supplier changes.
+    SupplierID INT NULL,
     PRIMARY KEY (ActivityID, PartID),
     FOREIGN KEY (ActivityID) REFERENCES activity_instance(ActivityID),
-    FOREIGN KEY (PartID) REFERENCES part(PartID)
+    FOREIGN KEY (PartID) REFERENCES part(PartID),
+    FOREIGN KEY (SupplierID) REFERENCES partner_company(PartnerID)
 
+);
+
+-- Coaching / retraining record for a driver, optionally tied to the
+-- behaviour_event that triggered it. An event with no matching
+-- coaching_log row is treated as an unresolved incident (see
+-- view_incident_resolution in basic_views.sql).
+CREATE TABLE coaching_log (
+    CoachingID INT AUTO_INCREMENT PRIMARY KEY,
+    DriverID VARCHAR(50) NOT NULL,
+    EventID INT NULL,
+    CoachDate DATE NOT NULL,
+    ConductedBy VARCHAR(255),
+    Outcome VARCHAR(50) NOT NULL,
+    Notes TEXT,
+    FOREIGN KEY (DriverID) REFERENCES driver(DriverID) ON DELETE CASCADE,
+    FOREIGN KEY (EventID) REFERENCES behaviour_event(EventID) ON DELETE SET NULL
+);
+
+-- Per-classification service interval, used to flag vehicles overdue for
+-- service (see view_vehicles_overdue_for_service in basic_views.sql).
+-- Updating a rule's IntervalDays only changes how *future* overdue checks
+-- are evaluated — it never rewrites the maintenance_job history the check
+-- is compared against.
+CREATE TABLE maintenance_schedule_rule (
+    RuleID INT AUTO_INCREMENT PRIMARY KEY,
+    ClassificationID INT NOT NULL,
+    IntervalDays INT NOT NULL,
+    Description VARCHAR(255),
+    FOREIGN KEY (ClassificationID) REFERENCES vehicle_classification(ClassificationID) ON DELETE CASCADE,
+    UNIQUE KEY unique_classification_rule (ClassificationID)
 );

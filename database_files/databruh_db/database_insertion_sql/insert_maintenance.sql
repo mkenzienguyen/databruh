@@ -83,18 +83,120 @@ INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, D
 -- 9. Mechanic Activity Assignments (Workload Distribution)
 -- ==========================================
 -- Job M1021: Brake Service (Hoang Van Duc [ME-12] & Pham Thi Lan [ME-15])
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(101, 'ME-12'),
-(101, 'ME-15');
+-- — per-mechanic hours matching the brief's own example table exactly.
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(101, 'ME-12', 2.5),
+(101, 'ME-15', 2.5);
 
 -- Job M1021: Tyre Replacement (Hoang Van Duc [ME-12])
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(102, 'ME-12');
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(102, 'ME-12', 1.0);
 
 -- Job M1022: Preventative Servicing (Nguyen Thi Mai [ME-07])
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(103, 'ME-07');
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(103, 'ME-07', 1.5);
 
 -- Job M1022: Refrigeration Repair (Tran Quoc Bao [ME-09])
-INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID) VALUES
-(104, 'ME-09');
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(104, 'ME-09', 2.0);
+
+UPDATE activity_instance SET RepeatFault = TRUE WHERE ActivityID = 102;
+UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 104;
+
+-- ==========================================
+-- 9b. Open Job: Repeat Refrigeration Failure on VEH-002
+-- ==========================================
+-- Third occurrence of the same failure on this vehicle - demonstrates
+-- view_repeated_component_failures, and leaves one open job/activity for
+-- the workshop manager and mechanic dashboards to act on.
+INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, Status, AlertID, TotalCost) VALUES
+(1023, 'VEH-002', 2, '2026-06-01 09:00:00', NULL, 'Open', NULL, NULL);
+
+INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, DiagnosticResult, RepeatFault) VALUES
+(105, 1023, 7, 3, 'Recurring refrigeration belt failure - third occurrence, recommend full unit inspection', TRUE);
+
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(105, 'ME-09', 3.0);
+
+-- ==========================================
+-- 10. Maintenance Schedule Rules
+-- ==========================================
+INSERT INTO maintenance_schedule_rule (ClassificationID, IntervalDays, Description) VALUES
+(1, 180, 'Delivery Van: routine service every 6 months'),
+(2, 90, 'Refrigerated Truck: cold-chain duty cycle, serviced every 3 months'),
+(3, 180, 'Electric Van: routine service every 6 months'),
+(4, 120, 'Service Vehicle: serviced every 4 months'),
+(5, 90, 'Heavy Transport Truck: serviced every 3 months');
+
+-- ==========================================
+-- Additional Workshop
+-- ==========================================
+INSERT INTO workshop (WorkshopID, WorkshopName, WorkshopAddress, DepotID) VALUES
+(3, 'Da Nang Coastal Workshop', 'Road No. 5G, Da Nang High-Tech Park, Hoa Vang District, Da Nang', 3);
+
+-- ==========================================
+-- Additional Mechanics
+-- ==========================================
+INSERT INTO mechanic_worker (MechanicID, FullName, EmploymentStatus, EmergencyContactDetails, WorkshopID) VALUES
+('ME-21', 'Le Thi Hang', 'Active', 'Husband - 0935214213', 3),
+('ME-24', 'Nguyen Van Tai', 'Active', 'Wife - 0916244243', 2);
+
+-- ==========================================
+-- Additional Mechanic Certification History
+-- ==========================================
+-- Fills the previously-empty EV Technician (2) and Heavy Vehicle (4)
+-- mechanic certifications so those activity types have a qualified
+-- mechanic to assign.
+INSERT INTO mechanic_worker_certifications_history (MechanicID, CertificationID, IssueDate, ExpiryDate) VALUES
+('ME-21', 1, '2023-01-10', '2033-01-10'),
+('ME-21', 2, '2023-05-01', '2029-05-01'),
+('ME-24', 1, '2021-08-15', '2031-08-15'),
+('ME-24', 4, '2022-02-01', '2028-02-01');
+
+-- ==========================================
+-- Additional Alerts
+-- ==========================================
+INSERT INTO alert (AlertID, AlertName, VehicleID, AlertDescription, AlertTimestamp, Status) VALUES
+(3, 'Tyre Pressure Low', 'VEH-004', 'Front-left tyre pressure below recommended threshold.', '2026-06-05 09:00:00', 'New'),
+(4, 'Engine Overheat Warning', 'VEH-007', 'Coolant temperature exceeding safe operating range.', '2026-07-20 13:10:00', 'Escalated'),
+(5, 'Battery Health Degraded', 'VEH-003', 'EV battery state-of-health below 80%.', '2026-04-10 10:00:00', 'Resolved');
+
+-- ==========================================
+-- Additional Maintenance Jobs
+-- ==========================================
+INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, Status, AlertID, TotalCost) VALUES
+(1024, 'VEH-004', 1, '2026-06-06 09:00:00', '2026-06-06 14:00:00', 'Closed', 3, 950000),
+(1025, 'VEH-005', 2, '2026-04-20 08:00:00', '2026-04-21 08:00:00', 'Closed', NULL, 4200000),
+(1026, 'VEH-007', 2, '2026-07-20 14:00:00', NULL, 'Open', 4, NULL),
+(1027, 'VEH-003', 3, '2026-04-11 09:00:00', '2026-04-11 15:00:00', 'Closed', 5, 1250000),
+(1028, 'VEH-006', 3, '2026-05-25 08:00:00', '2026-05-25 12:00:00', 'Closed', NULL, 600000),
+(1029, 'VEH-001', 1, '2026-07-02 09:00:00', '2026-07-02 15:00:00', 'Closed', NULL, 500000),
+(1030, 'VEH-002', 2, '2026-07-10 08:00:00', '2026-07-11 08:00:00', 'Closed', NULL, 2900000);
+
+-- ==========================================
+-- Additional Activity Instances
+-- ==========================================
+INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, DiagnosticResult) VALUES
+(106, 1024, 10, 1.5, 'Front-left tyre replaced, pressure sensor recalibrated'),
+(107, 1025, 2, 6.0, 'Full service - oil, filters, brake fluid'),
+(108, 1025, 9, 2.0, 'Rear brake pads replaced'),
+(109, 1026, 8, 4.0, 'Engine coolant system inspection - awaiting parts for radiator replacement'),
+(110, 1027, 6, 3.5, 'Battery module diagnostics - degraded cell replaced'),
+(111, 1028, 1, 1.0, 'Routine inspection - all systems normal'),
+(112, 1029, 1, 1.0, 'Routine inspection - all systems normal'),
+(113, 1030, 9, 3.0, 'Brake pads worn - replaced both axles');
+
+-- ==========================================
+-- Additional Mechanic Activity Assignments
+-- ==========================================
+INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
+(106, 'ME-12', 1.5),
+(107, 'ME-07', 6.0),
+(108, 'ME-09', 2.0),
+(109, 'ME-24', 4.0),
+(110, 'ME-21', 3.5),
+(111, 'ME-21', 1.0),
+(112, 'ME-15', 1.0),
+(113, 'ME-07', 3.0);
+
+UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 110;

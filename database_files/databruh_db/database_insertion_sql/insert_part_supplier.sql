@@ -40,10 +40,13 @@ INSERT INTO supplier_product_list (PartID, PartnerID, CostPerUnit, Description) 
 -- Activity 101: Brake Service on Job M1021 (Requires Brake Pads)
 -- Activity 102: Tyre Replacement on Job M1021 (Requires Tyre)
 -- Activity 104: Refrigeration Repair on Job M1022 (Requires Belts)
-INSERT INTO activity_instance_part_used (ActivityID, PartID, QuantityUsed) VALUES
-(101, 501, 1), -- Used 1 Set of Front Brake Pads for VEH-001
-(102, 502, 2), -- Used 2 New Tyres for VEH-001
-(104, 503, 1); -- Used 1 Refrigeration Belt for VEH-002
+-- SupplierID records who actually fulfilled that specific usage, matching
+-- each part's current PrimarySupplierID at seed time (see full_creation_script.sql
+-- comment on activity_instance_part_used for why this is tracked separately).
+INSERT INTO activity_instance_part_used (ActivityID, PartID, QuantityUsed, SupplierID) VALUES
+(101, 501, 1, 3), -- Used 1 Set of Front Brake Pads for VEH-001, supplied by Hanoi Auto Parts JSC
+(102, 502, 2, 4), -- Used 2 New Tyres for VEH-001, supplied by Saigon Fleet Supplies Co.
+(104, 503, 1, 5); -- Used 1 Refrigeration Belt for VEH-002, supplied by Carrier Transicold Southeast Asia
 
 -- ==========================================
 -- 5. Warranty Claims
@@ -57,3 +60,54 @@ INSERT INTO warranty_claim (WarrantyClaimID, PartnerID, ActivityID, Status, Clai
 -- Linking the cracked refrigeration belt replacement to our active claim
 INSERT INTO warranty_part_list (WarrantyClaimID, PartID) VALUES
 ('WAR-2026-0001', 503);
+
+-- ==========================================
+-- 7. Part Inventory Levels
+-- ==========================================
+-- Tyres (502) are seeded below their reorder threshold to demonstrate
+-- view_parts_below_reorder.
+UPDATE part SET QuantityOnHand = 40, ReorderThreshold = 15 WHERE PartID = 501;
+UPDATE part SET QuantityOnHand = 8,  ReorderThreshold = 10 WHERE PartID = 502;
+UPDATE part SET QuantityOnHand = 20, ReorderThreshold = 5  WHERE PartID = 503;
+
+-- ==========================================
+-- Additional Suppliers
+-- ==========================================
+INSERT INTO partner_company (PartnerID, PartnerName, PartnerType, DeliveryLeadTimes, ContactInfo, Description) VALUES
+(6, 'VinFast EV Parts Center', 'Manufacturer', '6 Days', 'evparts@vinfast.vn, Tel: +84-225-730-9999', 'OEM EV battery and drivetrain components'),
+(7, 'Southern Truck Radiators Ltd.', 'Supplier', '4 Days', 'sales@southerntruckradiators.com, Tel: +84-28-3822-1010', 'Heavy truck cooling system specialist');
+
+-- ==========================================
+-- Additional Parts (inventory columns included directly)
+-- ==========================================
+INSERT INTO part (PartID, PartName, PrimarySupplierID, BackupSupplierID, QuantityOnHand, ReorderThreshold) VALUES
+(504, 'EV Battery Module', 6, 3, 3, 2),
+(505, 'Engine Coolant Radiator', 7, 2, 6, 3);
+
+-- ==========================================
+-- Additional Supplier Product List
+-- ==========================================
+INSERT INTO supplier_product_list (PartID, PartnerID, CostPerUnit, Description) VALUES
+(504, 6, 18000000, 'OEM EV battery module for VF Pro Van'),
+(504, 3, 15500000, 'Aftermarket-compatible EV battery module'),
+(505, 7, 3200000, 'Heavy-duty replacement radiator for commercial trucks'),
+(505, 2, 3800000, 'Isuzu Genuine OEM radiator assembly');
+
+-- ==========================================
+-- Additional Parts Used in Activities
+-- ==========================================
+INSERT INTO activity_instance_part_used (ActivityID, PartID, QuantityUsed, SupplierID) VALUES
+(106, 502, 1, 4),
+(108, 501, 1, 3),
+(109, 505, 1, 7),
+(110, 504, 1, 6),
+(113, 501, 1, 1);
+
+-- ==========================================
+-- Additional Warranty Claims
+-- ==========================================
+INSERT INTO warranty_claim (WarrantyClaimID, PartnerID, ActivityID, Status, ClaimDate, ClaimResolvedDate) VALUES
+('WAR-2026-0002', 6, 110, 'Resolved', '2026-04-12 09:00:00', '2026-04-20 10:00:00');
+
+INSERT INTO warranty_part_list (WarrantyClaimID, PartID) VALUES
+('WAR-2026-0002', 504);

@@ -87,7 +87,8 @@
 }
 
 .chart-card-depot,
-.chart-card-score {
+.chart-card-score,
+.chart-card-depot-trend {
     grid-column: span 3;
     grid-row: span 2;
 }
@@ -270,7 +271,8 @@
     .chart-card-type,
     .chart-card-severity,
     .chart-card-depot,
-    .chart-card-score {
+    .chart-card-score,
+    .chart-card-depot-trend {
         min-height: 27rem;
         grid-column: span 1;
         grid-row: span 1;

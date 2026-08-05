@@ -1420,12 +1420,14 @@ body::before {
 }
 
 .chart-card-depot,
-.chart-card-score {
+.chart-card-score,
+.chart-card-depot-trend {
     grid-column: span 3;
     grid-row: span 2;
 }
 
-.chart-card-depot {
+.chart-card-depot,
+.chart-card-depot-trend {
     background: var(--mineral-soft);
 }
 
@@ -2334,7 +2336,8 @@ body::before {
     .chart-card-type,
     .chart-card-severity,
     .chart-card-depot,
-    .chart-card-score {
+    .chart-card-score,
+    .chart-card-depot-trend {
         grid-column: 1;
         grid-row: span 1;
     }

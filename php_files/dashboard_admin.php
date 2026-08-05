@@ -226,6 +226,39 @@ while ($row = $anomalyResult->fetch_assoc()) {
     $scoreAnomalies[] = $row;
 }
 
+// Monthly score per driver, for the line chart below. Built as a
+// union of every (Year, Month) that appears for ANY driver so each
+// driver's line lands on the correct point on a shared axis, rather
+// than assuming every driver has the same months recorded.
+$driverScoresRaw = [];
+$scoreMonthKeys = [];
+$scoreResult = $conn->query(
+    'SELECT d.FullName, msl.Month, msl.Year, msl.Score
+     FROM monthly_score_log msl
+     JOIN driver d ON msl.DriverID = d.DriverID
+     ORDER BY d.FullName, msl.Year, msl.Month'
+);
+while ($row = $scoreResult->fetch_assoc()) {
+    $monthKey = sprintf('%04d-%02d', (int) $row['Year'], (int) $row['Month']);
+    $scoreMonthKeys[$monthKey] = true;
+    $driverScoresRaw[$row['FullName']][$monthKey] = (int) $row['Score'];
+}
+$scoreMonthKeys = array_keys($scoreMonthKeys);
+sort($scoreMonthKeys);
+
+$scoreChartLabels = array_map(
+    static fn (string $key): string => substr($key, 5, 2) . '/' . substr($key, 0, 4),
+    $scoreMonthKeys
+);
+$driverScoreSeries = [];
+foreach ($driverScoresRaw as $driverName => $scoresByMonth) {
+    $series = [];
+    foreach ($scoreMonthKeys as $monthKey) {
+        $series[] = $scoresByMonth[$monthKey] ?? null;
+    }
+    $driverScoreSeries[] = ['label' => $driverName, 'data' => $series];
+}
+
 $conn->close();
 ?>
 <!DOCTYPE html>
@@ -353,6 +386,17 @@ $conn->close();
                         </div>
                         <div class="chart-wrap">
                             <canvas id="depotChart" role="img" aria-label="Bar chart of incidents by depot."></canvas>
+                        </div>
+                    </article>
+                    <article class="chart-card chart-card-score" data-stack-card>
+                        <div class="chart-heading">
+                            <div>
+                                <span>Assignment readiness</span>
+                                <h3>Monthly driver score</h3>
+                            </div>
+                        </div>
+                        <div class="chart-wrap">
+                            <canvas id="scoreChart" role="img" aria-label="Line chart showing each driver's monthly safety score trend."></canvas>
                         </div>
                     </article>
                 </div>
@@ -682,6 +726,9 @@ $conn->close();
         const severityValues = <?php echo json_encode($severityValues); ?>;
         const depotLabels = <?php echo json_encode($depotLabels); ?>;
         const depotValues = <?php echo json_encode($depotValues); ?>;
+        const scoreChartLabels = <?php echo json_encode($scoreChartLabels); ?>;
+        const driverScoreSeries = <?php echo json_encode($driverScoreSeries); ?>;
+        const scoreColors = ['#111d26', '#b83d29', '#285f77', '#42695e', '#a97221'];
 
         Chart.defaults.color = '#58636b';
         Chart.defaults.font.family = "'Geist', 'Avenir Next', sans-serif";
@@ -737,6 +784,34 @@ $conn->close();
                 maintainAspectRatio: false,
                 indexAxis: 'y',
                 plugins: { legend: { display: false } }
+            }
+        });
+
+        new Chart(document.getElementById('scoreChart'), {
+            type: 'line',
+            data: {
+                labels: scoreChartLabels,
+                datasets: driverScoreSeries.map((series, index) => ({
+                    label: series.label,
+                    data: series.data,
+                    borderColor: scoreColors[index % scoreColors.length],
+                    backgroundColor: 'transparent',
+                    tension: 0.3,
+                    pointRadius: 3,
+                    pointHoverRadius: 5
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { boxWidth: 10, boxHeight: 10, padding: 14 }
+                    }
+                },
+                scales: { y: { min: 0, max: 100 } }
             }
         });
     </script>

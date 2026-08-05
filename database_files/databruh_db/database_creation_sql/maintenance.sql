@@ -4,7 +4,8 @@ CREATE TABLE workshop (
     WorkshopName VARCHAR(255) NOT NULL,
     WorkshopAddress VARCHAR(255),
     DepotID INT,
-    FOREIGN KEY (DepotID) REFERENCES depot_location(DepotID) ON DELETE SET NULL
+    FOREIGN KEY (DepotID) REFERENCES depot_location(DepotID) ON DELETE SET NULL,
+    UNIQUE KEY uq_workshop_depot (DepotID)
 );
 
 
@@ -77,6 +78,8 @@ CREATE TABLE activity_instance (
     ActivityTypeID INT NOT NULL,
     LabourHours DECIMAL(4,2),
     DiagnosticResult TEXT,
+    RepeatFault BOOLEAN NOT NULL DEFAULT FALSE,
+    WarrantyApplicable BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (JobID) REFERENCES maintenance_job(JobID) ON DELETE CASCADE,
     FOREIGN KEY (ActivityTypeID) REFERENCES activity_type(ActivityTypeID)
 );
@@ -85,6 +88,7 @@ CREATE TABLE activity_instance (
 CREATE TABLE activity_instance_worker_assigned (
     ActivityID INT NOT NULL,
     MechanicID VARCHAR(50) NOT NULL,
+    LabourHours DECIMAL(4,2) NULL,
     PRIMARY KEY (ActivityID, MechanicID),
     FOREIGN KEY (ActivityID) REFERENCES activity_instance(ActivityID) ON DELETE CASCADE,
     FOREIGN KEY (MechanicID) REFERENCES mechanic_worker(MechanicID) ON DELETE CASCADE
