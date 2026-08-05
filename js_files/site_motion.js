@@ -40,24 +40,106 @@
         });
     });
 
-    const scorePassword = (value) => {
-        const checks = [
-            value.length >= 8,
-            /[A-Za-z]/.test(value),
-            /[0-9]/.test(value),
-            value.length >= 12 || /[^A-Za-z0-9]/.test(value)
-        ];
+    const normalizePasswordValue = (value) =>
+        value.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 
-        return checks.filter(Boolean).length;
+    const passwordCandidateVariants = (value) => {
+        const lowercase = value.toLocaleLowerCase();
+        const canonical = lowercase
+            .replaceAll('@', 'a')
+            .replaceAll('$', 's')
+            .replaceAll('0', 'o');
+
+        return Array.from(new Set([
+            normalizePasswordValue(lowercase),
+            normalizePasswordValue(canonical)
+        ].filter(Boolean)));
     };
 
-    const strengthMessages = [
-        'Strength appears as you type',
-        'Weak. Add more length and variety',
-        'Fair. Keep building the password',
-        'Good. One more check will strengthen it',
-        'Strong password structure'
-    ];
+    const isPredictablePassword = (value, policy) => {
+        const normalized = normalizePasswordValue(value);
+
+        if (/^(.{1,4})\1{3,}$/u.test(normalized)) {
+            return true;
+        }
+
+        const commonPasswords = new Set(
+            (policy.commonPasswords || []).map(normalizePasswordValue)
+        );
+        const commonRoots = (policy.commonRoots || []).map(normalizePasswordValue);
+
+        return passwordCandidateVariants(value).some((candidate) => {
+            if (commonPasswords.has(candidate)) {
+                return true;
+            }
+
+            return commonRoots.some((root) => {
+                if (candidate === root) {
+                    return true;
+                }
+
+                if (!candidate.startsWith(root)) {
+                    return false;
+                }
+
+                return /^[0-9]{1,8}$/.test(candidate.slice(root.length));
+            });
+        });
+    };
+
+    const contextTermsFromValue = (value) => {
+        const terms = [value];
+        const parts = value.split(/[^\p{L}\p{N}]+/u);
+
+        parts.forEach((part) => {
+            if (Array.from(part).length >= 4) {
+                terms.push(part);
+            }
+        });
+
+        const emailLocalPart = value.includes('@') ? value.split('@', 1)[0] : '';
+        if (Array.from(emailLocalPart).length >= 4) {
+            terms.push(emailLocalPart);
+        }
+
+        return terms.map(normalizePasswordValue).filter(
+            (term) => Array.from(term).length >= 4
+        );
+    };
+
+    const usesPasswordContext = (value, contextValues) => {
+        const contextTerms = Array.from(new Set(
+            contextValues.flatMap(contextTermsFromValue)
+        ));
+
+        return passwordCandidateVariants(value).some((candidate) =>
+            contextTerms.some((term) => candidate.includes(term))
+        );
+    };
+
+    const evaluatePassword = (value, policy, contextValues) => {
+        const length = Array.from(value).length;
+        const withinMaximum = length <= policy.maxLength
+            && !/[\u0000-\u001f\u007f]/u.test(value);
+        const validLength = length >= policy.minLength && withinMaximum;
+        const mixedCase = withinMaximum
+            && /\p{Ll}/u.test(value)
+            && /\p{Lu}/u.test(value);
+        const numberAndSymbol = withinMaximum
+            && /\p{N}/u.test(value)
+            && /[^\p{L}\p{N}\s]/u.test(value);
+
+        return {
+            validLength,
+            mixedCase,
+            numberAndSymbol,
+            safeChoice: validLength
+                && mixedCase
+                && numberAndSymbol
+                && !isPredictablePassword(value, policy)
+                && !usesPasswordContext(value, contextValues)
+        };
+    };
 
     document.querySelectorAll('[data-password-input]').forEach((input) => {
         const meterId = input.getAttribute('data-password-input');
@@ -70,15 +152,70 @@
         const strengthTrack = meter.querySelector('[role="meter"]');
         const strengthCopy = meter.querySelector('[data-strength-copy]');
         const strengthCount = meter.querySelector('[data-strength-count]');
+        const requirementItems = Array.from(
+            meter.querySelectorAll('[data-password-check]')
+        );
+        let policy;
+
+        try {
+            policy = JSON.parse(meter.dataset.passwordPolicy || '{}');
+        } catch {
+            policy = {};
+        }
+
+        policy = {
+            minLength: Number(policy.minLength) || 15,
+            maxLength: Number(policy.maxLength) || 128,
+            commonPasswords: Array.isArray(policy.commonPasswords)
+                ? policy.commonPasswords
+                : [],
+            commonRoots: Array.isArray(policy.commonRoots) ? policy.commonRoots : [],
+            contextValues: Array.isArray(policy.contextValues)
+                ? policy.contextValues
+                : ['databruh']
+        };
+
+        const contextInputs = [
+            meter.dataset.passwordNameInput,
+            meter.dataset.passwordEmailInput
+        ]
+            .filter(Boolean)
+            .map((inputId) => document.getElementById(inputId))
+            .filter(Boolean);
 
         const updatePasswordStrength = () => {
             const value = input.value;
-            const score = value ? scorePassword(value) : 0;
+            const contextValues = [
+                ...policy.contextValues,
+                ...contextInputs.map((contextInput) => contextInput.value)
+            ];
+            const checks = value
+                ? evaluatePassword(value, policy, contextValues)
+                : {
+                    validLength: false,
+                    mixedCase: false,
+                    numberAndSymbol: false,
+                    safeChoice: false
+                };
+            const score = Object.values(checks).filter(Boolean).length;
+            const requirementsMet = score === 4;
+            const messages = {
+                validLength: `Use ${policy.minLength}–${policy.maxLength} printable characters`,
+                mixedCase: 'Add uppercase and lowercase letters',
+                numberAndSymbol: 'Add at least one number and one symbol',
+                safeChoice: 'Choose a password unrelated to common or personal terms'
+            };
+            const firstUnmetRequirement = Object.keys(checks).find(
+                (key) => !checks[key]
+            );
             const message = value
-                ? strengthMessages[score]
-                : strengthMessages[0];
+                ? requirementsMet
+                    ? 'All security requirements met'
+                    : messages[firstUnmetRequirement]
+                : 'Complete all four requirements';
 
             meter.dataset.score = String(score);
+            input.setCustomValidity(value && !requirementsMet ? message : '');
 
             if (strengthTrack) {
                 strengthTrack.setAttribute('aria-valuenow', String(score));
@@ -90,11 +227,21 @@
             }
 
             if (strengthCount) {
-                strengthCount.textContent = `${score}/4 checks`;
+                strengthCount.textContent = `${score}/4 requirements`;
             }
+
+            requirementItems.forEach((item) => {
+                const checkName = item.dataset.passwordCheck;
+                const isMet = Boolean(checks[checkName]);
+                item.classList.toggle('is-met', isMet);
+                item.dataset.state = isMet ? 'met' : 'pending';
+            });
         };
 
         input.addEventListener('input', updatePasswordStrength);
+        contextInputs.forEach((contextInput) => {
+            contextInput.addEventListener('input', updatePasswordStrength);
+        });
         updatePasswordStrength();
     });
 
