@@ -215,10 +215,13 @@ if (!function_exists('renderSiteMotionScripts')) {
     {
         $motionScriptVersion =
             @filemtime(__DIR__ . '/../../js_files/site_motion.js') ?: 1;
+        $sortableTablesScriptVersion =
+            @filemtime(__DIR__ . '/../../js_files/sortable_tables.js') ?: 1;
         ?>
         <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
         <script src="../js_files/site_motion.js?v=<?php echo $motionScriptVersion; ?>"></script>
+        <script src="../js_files/sortable_tables.js?v=<?php echo $sortableTablesScriptVersion; ?>"></script>
         <?php
     }
 }

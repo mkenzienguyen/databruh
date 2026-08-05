@@ -7,9 +7,7 @@ if ($passwordConn->connect_error) {
     die('Account services are temporarily unavailable. Please try again later.');
 }
 
-// Self-signup only ever offers DRIVER and MECHANIC. FLEET_MGR and WS_MGR
-// are elevated roles granted exclusively by an administrator in
-// admin_page.php, so they are never exposed as a signup choice.
+// FLEET_MGR/WS_MGR are granted by an admin in admin_page.php, never at signup.
 $roleOptions = [];
 $roleResult = $passwordConn->query(
     "SELECT TypeID, TypeName FROM account_type

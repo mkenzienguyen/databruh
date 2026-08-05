@@ -123,8 +123,6 @@ CREATE TABLE workshop (
     WorkshopAddress VARCHAR(255),
     DepotID INT,
     FOREIGN KEY (DepotID) REFERENCES depot_location(DepotID) ON DELETE SET NULL,
-    -- One workshop per depot, per "The company operates one workshop
-    -- per depot" in the brief.
     UNIQUE KEY uq_workshop_depot (DepotID)
 );
 
@@ -197,14 +195,9 @@ CREATE TABLE activity_instance (
     JobID INT NOT NULL,
     ActivityTypeID INT NOT NULL,
     -- Kept in sync with SUM(activity_instance_worker_assigned.LabourHours)
-    -- by trg_activity_worker_hours_after_* in business_rules.sql, so
-    -- existing per-activity queries keep working unchanged even though
-    -- hours are now recorded per mechanic underneath.
+    -- by triggers in business_rules.sql.
     LabourHours DECIMAL(4,2),
     DiagnosticResult TEXT,
-    -- Simple per-activity indicators from the brief's Activity-Level
-    -- Information list. The warranty_claim/warranty_part_list tables
-    -- (extension task) still carry the detailed claim.
     RepeatFault BOOLEAN NOT NULL DEFAULT FALSE,
     WarrantyApplicable BOOLEAN NOT NULL DEFAULT FALSE,
     FOREIGN KEY (JobID) REFERENCES maintenance_job(JobID) ON DELETE CASCADE,
@@ -215,9 +208,7 @@ CREATE TABLE activity_instance (
 CREATE TABLE activity_instance_worker_assigned (
     ActivityID INT NOT NULL,
     MechanicID VARCHAR(50) NOT NULL,
-    -- Labour hours logged by this specific mechanic on this activity,
-    -- matching the brief's example (two mechanics on one brake service,
-    -- each logging their own hours) rather than one total per activity.
+    -- Hours logged by this specific mechanic on this activity.
     LabourHours DECIMAL(4,2) NULL,
     PRIMARY KEY (ActivityID, MechanicID),
     FOREIGN KEY (ActivityID) REFERENCES activity_instance(ActivityID) ON DELETE CASCADE,
@@ -282,10 +273,8 @@ CREATE TABLE activity_instance_part_used (
     ActivityID INT NOT NULL,
     PartID INT NOT NULL,
     QuantityUsed INT,
-    -- Which supplier fulfilled this specific usage, captured at record
-    -- time. Kept separate from part.PrimarySupplierID (which can change
-    -- later) so historical consumption stays attributed correctly even
-    -- after a part's supplier changes.
+    -- Supplier that fulfilled this usage; kept separate from
+    -- part.PrimarySupplierID since that can change later.
     SupplierID INT NULL,
     PRIMARY KEY (ActivityID, PartID),
     FOREIGN KEY (ActivityID) REFERENCES activity_instance(ActivityID),
@@ -294,10 +283,7 @@ CREATE TABLE activity_instance_part_used (
 
 );
 
--- Coaching / retraining record for a driver, optionally tied to the
--- behaviour_event that triggered it. An event with no matching
--- coaching_log row is treated as an unresolved incident (see
--- view_incident_resolution in basic_views.sql).
+-- An event with no matching coaching_log row is an unresolved incident.
 CREATE TABLE coaching_log (
     CoachingID INT AUTO_INCREMENT PRIMARY KEY,
     DriverID VARCHAR(50) NOT NULL,
@@ -310,11 +296,7 @@ CREATE TABLE coaching_log (
     FOREIGN KEY (EventID) REFERENCES behaviour_event(EventID) ON DELETE SET NULL
 );
 
--- Per-classification service interval, used to flag vehicles overdue for
--- service (see view_vehicles_overdue_for_service in basic_views.sql).
--- Updating a rule's IntervalDays only changes how *future* overdue checks
--- are evaluated — it never rewrites the maintenance_job history the check
--- is compared against.
+-- Per-classification service interval, used to flag overdue vehicles.
 CREATE TABLE maintenance_schedule_rule (
     RuleID INT AUTO_INCREMENT PRIMARY KEY,
     ClassificationID INT NOT NULL,

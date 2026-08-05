@@ -79,13 +79,7 @@ INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate
 ('D-204', 3, '2023-05-01', '2028-05-01'), -- Tran Thi Bich: Refrigerated Transport Certification
 ('D-331', 1, '2023-06-21', '2028-06-21'), -- Le Quoc Minh: Standard Licence
 ('D-417', 5, '2023-11-18', '2028-11-18'), -- Pham Duc Long: Hazardous Goods Certification
--- Pham Duc Long briefly held Standard + EV certification, current when
--- his VEH-003 (Electric Van) assignment began on 2026-05-20 — required
--- for trg_vehicle_driver_assignment_before_insert to accept that
--- historical assignment — but both have since lapsed without renewal.
--- Still demonstrates view_unauthorized_vehicle_operation /
--- view_expired_certifications below, just as a realistic "certification
--- drift after assignment" case rather than "never had it".
+-- Standard + EV certs, valid when the VEH-003 assignment began but since lapsed
 ('D-417', 1, '2025-01-01', '2026-06-01'),
 ('D-417', 4, '2025-01-01', '2026-06-01');
 
@@ -102,8 +96,6 @@ INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate, EndDate) 
 -- ==========================================
 -- 10. Vehicle Type Certification Requirements
 -- ==========================================
--- Matches the brief's Vehicle Certification Matrix exactly (ALL listed
--- certifications are required, not just some of them).
 INSERT INTO vehicle_type_certification_requirement (ClassificationID, CertificationTypeID) VALUES
 (1, 1), -- Delivery Van requires Standard Licence
 (2, 1), -- Refrigerated Truck also requires Standard Licence
@@ -129,12 +121,8 @@ INSERT INTO behaviour_event (EventID, VehicleID, DriverID, DepotID, Timestamp, S
 (96, 'VEH-002', 'D-204', 2, '2026-05-13 18:05:00', 4, 'Speeding', 'Odometer: 112,480'),
 (97, 'VEH-001', 'D-112', 1, '2026-05-15 10:05:00', 2, 'Speeding', 'Odometer: 45,410, second speeding event this week');
 
--- Monthly safety scores are no longer hand-entered here: they are
--- computed from the behaviour_event rows below by
--- trg_behaviour_event_score_after_insert (see business_rules.sql),
--- using the exact per-event and monthly penalty table in the brief.
--- monthly_score_log is populated automatically as those events are
--- inserted further down this script.
+-- monthly_score_log is computed automatically by triggers in
+-- business_rules.sql, not hand-inserted here.
 
 
 
@@ -239,7 +227,6 @@ INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, D
 -- 9. Mechanic Activity Assignments (Workload Distribution)
 -- ==========================================
 -- Job M1021: Brake Service (Hoang Van Duc [ME-12] & Pham Thi Lan [ME-15])
--- — per-mechanic hours matching the brief's own example table exactly.
 INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
 (101, 'ME-12', 2.5),
 (101, 'ME-15', 2.5);
@@ -256,18 +243,12 @@ INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHou
 INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
 (104, 'ME-09', 2.0);
 
--- Activity 102 (tyre replacement) is a repeat/possible-alignment fault
--- per its diagnostic result below; activity 104's belt replacement is
--- the one under the WAR-2026-0001 warranty claim inserted further down.
 UPDATE activity_instance SET RepeatFault = TRUE WHERE ActivityID = 102;
 UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 104;
 
 -- ==========================================
--- 9b. Open Job: Repeat Refrigeration Failure on VEH-002
+-- 9b. Open Job: Repeat Refrigeration Failure on VEH-002 (third occurrence)
 -- ==========================================
--- Third occurrence of the same failure on this vehicle - demonstrates
--- view_repeated_component_failures, and leaves one open job/activity for
--- the workshop manager and mechanic dashboards to act on.
 INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, Status, AlertID, TotalCost) VALUES
 (1023, 'VEH-002', 2, '2026-06-01 09:00:00', NULL, 'Open', NULL, NULL);
 
@@ -325,12 +306,6 @@ INSERT INTO supplier_product_list (PartID, PartnerID, CostPerUnit, Description) 
 -- ==========================================
 -- 4. Parts Used in Activities
 -- ==========================================
--- Activity 101: Brake Service on Job M1021 (Requires Brake Pads)
--- Activity 102: Tyre Replacement on Job M1021 (Requires Tyre)
--- Activity 104: Refrigeration Repair on Job M1022 (Requires Belts)
--- SupplierID records who actually fulfilled that specific usage, matching
--- each part's current PrimarySupplierID at seed time (see full_creation_script.sql
--- comment on activity_instance_part_used for why this is tracked separately).
 INSERT INTO activity_instance_part_used (ActivityID, PartID, QuantityUsed, SupplierID) VALUES
 (101, 501, 1, 3), -- Used 1 Set of Front Brake Pads for VEH-001, supplied by Hanoi Auto Parts JSC
 (102, 502, 2, 4), -- Used 2 New Tyres for VEH-001, supplied by Saigon Fleet Supplies Co.
@@ -352,9 +327,7 @@ INSERT INTO warranty_part_list (WarrantyClaimID, PartID) VALUES
 -- ==========================================
 -- 7. Coaching Log
 -- ==========================================
--- Events 92 and 94 are resolved (coached). Events 91, 93, 95, 96, 97 are
--- left uncoached so view_incident_resolution has both resolved and
--- unresolved rows to demonstrate against.
+-- Events 92 and 94 are resolved (coached); 91, 93, 95, 96, 97 are not.
 INSERT INTO coaching_log (DriverID, EventID, CoachDate, ConductedBy, Outcome, Notes) VALUES
 ('D-112', 92, '2026-05-11', 'Fleet Manager', 'Coached - Verbal Warning', 'Reviewed telematics speeding event with driver; acknowledged and corrected.'),
 ('D-112', 94, '2026-05-13', 'Fleet Manager', 'Retraining Required', 'Second high-severity event this week (fatigue warning). Scheduled for defensive driving refresher.'),
@@ -373,8 +346,7 @@ INSERT INTO maintenance_schedule_rule (ClassificationID, IntervalDays, Descripti
 -- ==========================================
 -- 9. Part Inventory Levels
 -- ==========================================
--- Tyres (502) are seeded below their reorder threshold to demonstrate
--- view_parts_below_reorder.
+-- Tyres (502) are seeded below their reorder threshold.
 UPDATE part SET QuantityOnHand = 40, ReorderThreshold = 15 WHERE PartID = 501;
 UPDATE part SET QuantityOnHand = 8,  ReorderThreshold = 10 WHERE PartID = 502;
 UPDATE part SET QuantityOnHand = 20, ReorderThreshold = 5  WHERE PartID = 503;
@@ -407,18 +379,11 @@ INSERT INTO driver (DriverID, FullName, DepotID, LicenseNumber, LicenseExpiratio
 -- ==========================================
 -- Additional Driver Certifications Owned
 -- ==========================================
--- D-528's Standard Licence has lapsed, and D-823's Standard Licence
--- expires the same day as their driving licence - both feed
--- view_expired_certifications.
 INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate, ExpiryDate) VALUES
-('D-528', 1, '2020-05-01', '2026-06-01'),  -- Vo Thi Hoa: Standard Licence, EXPIRED (was valid when her VEH-006 assignment began 2026-04-01)
+('D-528', 1, '2020-05-01', '2026-06-01'),  -- Vo Thi Hoa: Standard Licence, EXPIRED
 ('D-604', 1, '2022-01-10', '2028-01-10'),  -- Dang Van Kiet: Standard Licence
 ('D-604', 2, '2022-06-15', '2028-06-15'),  -- Dang Van Kiet: Heavy Vehicle Licence
--- Dang Van Kiet briefly held Refrigerated Transport Certification,
--- current when his VEH-005 assignment began on 2026-03-01, but it has
--- since lapsed without renewal — a second view_unauthorized_vehicle_operation
--- / view_expired_certifications case alongside D-417/VEH-003.
-('D-604', 3, '2025-01-01', '2026-06-01'),
+('D-604', 3, '2025-01-01', '2026-06-01'),  -- Dang Van Kiet: Refrigerated Transport Certification, EXPIRED
 ('D-715', 1, '2023-02-01', '2029-02-01'),  -- Bui Thi Ngoc: Standard Licence
 ('D-823', 1, '2021-07-01', '2026-07-01'),  -- Ho Van Phuc: Standard Licence, EXPIRED
 ('D-823', 4, '2022-03-01', '2028-03-01'),  -- Ho Van Phuc: EV Certification
@@ -429,13 +394,6 @@ INSERT INTO driver_certification_owned (DriverID, CertificationTypeID, IssueDate
 -- ==========================================
 -- Additional Vehicle - Driver Assignments
 -- ==========================================
--- Each of these passes trg_vehicle_driver_assignment_before_insert as of
--- its StartDate above (vehicle available, required certs held and
--- unexpired at that date, no unresolved critical event, no score on
--- record yet) — certifications shown expired above lapsed *after* the
--- assignment began, which the trigger's historical check intentionally
--- allows; view_unauthorized_vehicle_operation is what surfaces the
--- resulting drift to the fleet manager today.
 INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate, EndDate) VALUES
 ('VEH-004', 'D-715', '2026-02-01', NULL),
 ('VEH-005', 'D-604', '2026-03-01', NULL),
@@ -465,12 +423,7 @@ INSERT INTO behaviour_event (EventID, VehicleID, DriverID, DepotID, Timestamp, S
 (114, 'VEH-002', 'D-204', 2, '2026-08-01 07:50:00', 3, 'Tailgating',        'Odometer: 111,200'),
 (115, 'VEH-004', 'D-715', 1, '2026-08-03 16:00:00', 1, 'Harsh Braking',     'Odometer: 19,200');
 
--- Additional monthly scores for D-112, D-204, D-331, D-417, D-604,
--- D-715, D-528, D-823 are no longer hand-entered: trg_behaviour_event_score_after_insert
--- computes and upserts monthly_score_log for every driver/month that
--- has at least one behaviour_event, as those events are inserted below
--- (and sp_recalculate_all_monthly_scores() at the end of this script
--- backfills any driver/month it might have missed).
+-- Monthly scores for these drivers are computed by trigger, not hand-entered.
 
 -- ==========================================
 -- Additional Workshop
@@ -488,9 +441,6 @@ INSERT INTO mechanic_worker (MechanicID, FullName, EmploymentStatus, EmergencyCo
 -- ==========================================
 -- Additional Mechanic Certification History
 -- ==========================================
--- Fills the previously-empty EV Technician (2) and Heavy Vehicle (4)
--- mechanic certifications so those activity types have a qualified
--- mechanic to assign.
 INSERT INTO mechanic_worker_certifications_history (MechanicID, CertificationID, IssueDate, ExpiryDate) VALUES
 ('ME-21', 1, '2023-01-10', '2033-01-10'),
 ('ME-21', 2, '2023-05-01', '2029-05-01'),
@@ -543,8 +493,6 @@ INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHou
 (112, 'ME-15', 1.0),
 (113, 'ME-07', 3.0);
 
--- Activity 110's degraded battery cell is covered under warranty claim
--- WAR-2026-0002 inserted below.
 UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 110;
 
 -- ==========================================
@@ -598,13 +546,6 @@ INSERT INTO coaching_log (DriverID, EventID, CoachDate, ConductedBy, Outcome, No
 ('D-204', 110, '2026-06-21', 'Fleet Manager', 'Coached - Written Warning', 'Fatigue warning discussed; reminded of mandatory rest breaks.'),
 ('D-715', 103, '2026-03-16', 'Fleet Manager', 'Completed - No Concerns', 'Minor tailgating event reviewed; no further action needed.');
 
--- ==========================================
--- Recompute every driver/month safety score from the behaviour_event
--- rows above (business_rules.sql must already be imported for this
--- procedure and the triggers that keep it current going forward to
--- exist). Belt-and-braces: trg_behaviour_event_score_after_insert
--- already computed each one as its event was inserted; this call just
--- guarantees every driver/month is present and consistent even if that
--- trigger definition changes later.
--- ==========================================
+-- Rebuilds monthly_score_log from the behaviour_event rows above
+-- (requires business_rules.sql to already be imported).
 CALL sp_recalculate_all_monthly_scores();

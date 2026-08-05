@@ -1,9 +1,6 @@
 USE databruh_db;
 
--- Coaching / retraining record for a driver, optionally tied to the
--- behaviour_event that triggered it. An event with no matching
--- coaching_log row is treated as an unresolved incident (see
--- view_incident_resolution in basic_views.sql).
+-- An event with no matching coaching_log row is an unresolved incident.
 CREATE TABLE IF NOT EXISTS coaching_log (
     CoachingID INT AUTO_INCREMENT PRIMARY KEY,
     DriverID VARCHAR(50) NOT NULL,

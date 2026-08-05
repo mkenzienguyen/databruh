@@ -85,15 +85,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                 $activeCheck->close();
             } else {
                 $activeCheck->close();
-                // The database enforces the brief's assignment rules directly
-                // (trg_vehicle_driver_assignment_before_insert in
-                // business_rules.sql): vehicle not Under Maintenance/Out of
-                // Service, driver holds every required unexpired
-                // certification, safety score above 50, and no unresolved
-                // critical incident. A violation raises SIGNAL SQLSTATE
-                // '45000', which mysqli surfaces as a mysqli_sql_exception —
-                // catch it here and show its message directly, since it's
-                // already a plain-language explanation of which rule failed.
+                // business_rules.sql's trigger enforces eligibility and
+                // raises SIGNAL SQLSTATE '45000' on violation, which mysqli
+                // surfaces as a mysqli_sql_exception.
                 try {
                     $stmt = $conn->prepare(
                         'INSERT INTO vehicle_driver_assignment (VehicleID, DriverID, StartDate) VALUES (?, ?, ?)'
@@ -103,10 +97,6 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
                         $message = 'Assignment created.';
                         $messageIsError = false;
                     } else {
-                        // Covers environments where mysqli isn't in
-                        // exception-throwing mode: execute() returns false
-                        // instead, with the trigger's SIGNAL message on
-                        // $stmt->error.
                         $message = $stmt->error !== '' ? $stmt->error : 'Could not create assignment.';
                         $messageIsError = true;
                     }
@@ -300,13 +290,7 @@ foreach ($depotTrendByDepot as $depotName => $monthCounts) {
     $depotTrendSeries[] = ['label' => $depotName, 'data' => $series];
 }
 
-// ---------------------------------------------------------------
-// Driver safety score trend: every driver's monthly score, so fleet
-// managers can compare drivers over time (not just against their own
-// baseline, which the anomaly table above already covers). Missing
-// months for a given driver are left as null so Chart.js draws a gap
-// instead of a misleading drop to zero.
-// ---------------------------------------------------------------
+// Missing months are left null so Chart.js draws a gap, not a drop to zero.
 $driverScoreTrendMonths = [];
 $driverScoreTrendByDriver = [];
 $driverScoreTrendResult = $conn->query(
@@ -333,10 +317,8 @@ foreach ($driverScoreTrendByDriver as $driverName => $scoresByKey) {
     $driverScoreTrendSeries[] = ['label' => $driverName, 'data' => $series];
 }
 
-// ---------------------------------------------------------------
 // Incident review: search/filter by driver, vehicle, depot, event
 // type, severity, resolution status, and date range.
-// ---------------------------------------------------------------
 $depotOptions = [];
 $depotOptResult = $conn->query('SELECT DepotName FROM depot_location ORDER BY DepotName');
 while ($row = $depotOptResult->fetch_assoc()) {
@@ -430,9 +412,7 @@ while ($row = $incidentResult->fetch_assoc()) {
 $incidentStmt->close();
 $unresolvedCount = count(array_filter($incidents, static fn (array $row): bool => $row['ResolutionStatus'] === 'Unresolved'));
 
-// ---------------------------------------------------------------
 // High-risk drivers and drivers flagged for retraining.
-// ---------------------------------------------------------------
 $driverRisk = [];
 $driverRiskResult = $conn->query(
     'SELECT * FROM view_driver_risk_summary ORDER BY SevereIncidents DESC, TotalIncidents DESC'
@@ -441,9 +421,7 @@ while ($row = $driverRiskResult->fetch_assoc()) {
     $driverRisk[] = $row;
 }
 
-// ---------------------------------------------------------------
 // Company-wide risk identification.
-// ---------------------------------------------------------------
 $repeatSpeedingDrivers = [];
 $repeatSpeedingResult = $conn->query('SELECT * FROM view_repeat_speeding_drivers');
 while ($row = $repeatSpeedingResult->fetch_assoc()) {
@@ -468,26 +446,16 @@ while ($row = $unauthorizedResult->fetch_assoc()) {
     $unauthorizedVehicleOperation[] = $row;
 }
 
-// ---------------------------------------------------------------
-// Coaching / training compliance: "A driver with a score of 75 or
-// below must attend driver coaching. A driver with a safety score of
-// 50 or below cannot be assigned to a vehicle until they complete
-// safety training." The <=50 half is enforced at the database layer
-// (trg_vehicle_driver_assignment_before_insert); this table is how the
-// fleet manager sees both halves and knows who to schedule.
-// ---------------------------------------------------------------
+// Coaching / training compliance: score <= 75 needs coaching, <= 50
+// blocks assignment (that half enforced at the DB layer already).
 $coachingRequired = [];
 $coachingRequiredResult = $conn->query('SELECT * FROM view_coaching_required');
 while ($row = $coachingRequiredResult->fetch_assoc()) {
     $coachingRequired[] = $row;
 }
 
-// Drivers currently on safety hold: an unresolved critical incident, per
-// "If a critical event happens the driver will be made inactive and
-// unable to be assigned to a vehicle until the review has been
-// completed or he completes the safety training." Same rule the
-// assignment trigger enforces, surfaced here so it's visible before a
-// fleet manager even tries to create the assignment.
+// Drivers on safety hold: an unresolved critical incident blocks
+// assignment (same rule the DB trigger enforces).
 $safetyHoldDriverIds = [];
 $safetyHoldResult = $conn->query(
     "SELECT DISTINCT be.DriverID

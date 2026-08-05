@@ -30,8 +30,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $pass = (string) ($_POST['password'] ?? '');
         $confirmPass = (string) ($_POST['confirm_password'] ?? '');
         $newAccountTypeID = trim((string) ($_POST['type_id'] ?? ''));
-        // ADMIN accounts are never created through this form - only the
-        // four operational roles an admin should be provisioning directly.
+        // ADMIN accounts are never created through this form.
         $allowedCreateRoles = ['FLEET_MGR', 'WS_MGR', 'MECHANIC', 'DRIVER'];
 
         if ($fullName === '' || $email === '' || $pass === '' || $confirmPass === '') {
@@ -179,8 +178,7 @@ while ($row = $typesResult->fetch_assoc()) {
     $accountTypes[] = $row;
 }
 
-// Records already claimed by another account, so they don't show up twice
-// in the "link this account" dropdowns below.
+// Records already claimed, so they don't show up twice in the dropdowns below.
 $linkedOwners = [];
 $linkedOwnerResult = $conn->query("SELECT AccountID, LinkedID FROM account WHERE LinkedID IS NOT NULL");
 while ($row = $linkedOwnerResult->fetch_assoc()) {

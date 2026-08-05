@@ -62,9 +62,7 @@ if ($linkedId !== null) {
     $stmt->close();
 }
 
-// Vehicle maintenance history lookup — available to every mechanic
-// regardless of link status, since it's fleet reference data rather
-// than a personal record.
+// Available to every mechanic regardless of link status - it's fleet reference data, not a personal record.
 $allVehicles = [];
 $vehicleListResult = $conn->query(
     'SELECT VehicleID, RegistrationNumber, Manufacturer, Model FROM vehicle ORDER BY RegistrationNumber'

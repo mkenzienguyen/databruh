@@ -120,10 +120,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             if ($stmt->execute()) {
                 $activityId = $stmt->insert_id;
                 $stmt->close();
-                // Labour hours are recorded against this first mechanic
-                // directly; activity_instance.LabourHours above is then
-                // kept in sync with the sum across all assigned mechanics
-                // by trg_activity_worker_hours_after_insert.
+                // activity_instance.LabourHours is kept in sync by trg_activity_worker_hours_after_insert.
                 $assignStmt = $conn->prepare(
                     'INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES (?, ?, ?)'
                 );

@@ -1,78 +1,35 @@
 USE databruh_db;
 
--- =====================================================================
--- Business rule enforcement.
---
--- The brief states several rules as hard constraints on the data, not
--- just things to report on:
---   - a vehicle Under Maintenance or Out of Service cannot be assigned
---   - a driver cannot be assigned to a vehicle category they are not
---     certified for, or whose certification has expired
---   - a driver with a safety score of 50 or below cannot be assigned
---     until they complete safety training
---   - a driver with an unresolved critical safety event is made
---     inactive (unable to be assigned) until the review is completed
---     or they complete safety training
---
--- Previously these were only detectable after the fact via views
--- (view_unauthorized_vehicle_operation, view_expired_certifications,
--- view_incident_resolution). This file adds a BEFORE INSERT/UPDATE
--- trigger on vehicle_driver_assignment that actually blocks a
--- violating assignment at the database layer, regardless of which
--- application code path tries to create one.
---
--- It also makes the monthly safety score a computed value derived
--- from behaviour_event using the exact penalty table in the brief,
--- instead of a hand-entered number, and adds the remaining schema
--- gaps identified against the brief (per-mechanic labour hours,
--- explicit repeat-fault/warranty indicators on each activity, and a
--- one-workshop-per-depot constraint).
---
--- Safe to re-run: columns/constraints use IF NOT EXISTS, and
--- triggers/procedures are dropped and recreated.
--- =====================================================================
+-- Enforces at the DB layer: no assignment to a vehicle Under
+-- Maintenance/Out of Service; driver must hold required, unexpired
+-- certifications; driver safety score must be above 50; no unresolved
+-- critical event. Also computes monthly_score_log from behaviour_event
+-- instead of hand-entry. Safe to re-run.
 
 -- ---------------------------------------------------------------------
 -- 1. Schema additions
 -- ---------------------------------------------------------------------
 
--- One workshop per depot, per "The company operates one workshop per
--- depot" in the brief. NULL DepotID values are still allowed to repeat
--- (a workshop with no depot assigned yet), which is standard SQL UNIQUE
--- semantics.
+-- One workshop per depot.
 ALTER TABLE workshop
     ADD UNIQUE INDEX IF NOT EXISTS uq_workshop_depot (DepotID);
 
--- Activity-level information the brief lists alongside diagnostic
--- result: a repeat-fault indicator and a warranty indicator, per
--- activity. (The extension task's warranty_claim/warranty_part_list
--- tables still carry the detailed claim -- provider, resolution, which
--- parts -- this is just the simple yes/no flag the core spec asks for.)
 ALTER TABLE activity_instance
     ADD COLUMN IF NOT EXISTS RepeatFault BOOLEAN NOT NULL DEFAULT FALSE,
     ADD COLUMN IF NOT EXISTS WarrantyApplicable BOOLEAN NOT NULL DEFAULT FALSE;
 
--- The brief's own example activity table records labour hours per
--- mechanic on the activity (two mechanics on the same brake service,
--- each logging their own hours), not one total per activity. Move
--- LabourHours down to the join table; activity_instance.LabourHours is
--- kept and automatically maintained (see trigger below) as the sum, so
--- every existing query that reads it keeps working unchanged.
+-- Labour hours per mechanic per activity, not one total per activity.
+-- activity_instance.LabourHours is kept in sync as the sum (trigger below).
 ALTER TABLE activity_instance_worker_assigned
     ADD COLUMN IF NOT EXISTS LabourHours DECIMAL(4,2) NULL;
 
--- Backfill: for any activity created before this column existed, give
--- each assigned mechanic the activity's existing total (matches how
--- the seed data already recorded it, e.g. two mechanics both logging
--- the same hours on a shared brake service).
 UPDATE activity_instance_worker_assigned aiwa
 JOIN activity_instance ai ON aiwa.ActivityID = ai.ActivityID
 SET aiwa.LabourHours = ai.LabourHours
 WHERE aiwa.LabourHours IS NULL;
 
 -- ---------------------------------------------------------------------
--- 2. Keep activity_instance.LabourHours in sync with the per-mechanic
---    hours recorded against it.
+-- 2. Keep activity_instance.LabourHours in sync with per-mechanic hours
 -- ---------------------------------------------------------------------
 
 DELIMITER $$
@@ -117,21 +74,11 @@ DELIMITER ;
 
 -- ---------------------------------------------------------------------
 -- 3. Monthly safety score, computed from behaviour_event.
---
 -- Base 100, minus per-event penalties (Low -2, Medium -5, High -10,
--- Critical -20), minus the additional flat deductions in the brief's
--- Event Penalties table (>3 speeding events in the month: -10, >2
--- fatigue warnings in the month: -15, any critical event: -10 on top
--- of that event's own -20). Clamped to [0, 100].
---
--- sp_recalculate_driver_month_score recomputes a single driver/month
--- and upserts it into monthly_score_log. It is called automatically
--- whenever a behaviour_event is inserted, updated, or deleted (via the
--- triggers below), and can also be called directly to fix up one
--- driver/month. sp_recalculate_all_monthly_scores rebuilds every
--- driver/month that has at least one recorded event -- useful for a
--- one-off backfill after loading historical event data, or from an
--- admin "recalculate scores" action.
+-- Critical -20), minus flat deductions (>3 speeding: -10, >2 fatigue
+-- warnings: -15, any critical event: -10 more). Clamped to [0, 100].
+-- sp_recalculate_all_monthly_scores rebuilds every driver/month; useful
+-- for backfilling after loading historical event data.
 -- ---------------------------------------------------------------------
 
 DELIMITER $$
@@ -249,24 +196,11 @@ DELIMITER ;
 
 -- ---------------------------------------------------------------------
 -- 4. Assignment eligibility enforcement.
---
--- sp_check_assignment_eligibility raises SIGNAL SQLSTATE '45000' (which
--- aborts the triggering INSERT/UPDATE and surfaces MESSAGE_TEXT back to
--- the caller -- mysqli throws this as a mysqli_sql_exception with that
--- text as getMessage()) the first time it finds a rule violated. Reused
--- by both the INSERT and UPDATE triggers below so a reactivated
--- assignment is checked exactly the same way as a new one.
---
--- Certification and score checks are evaluated as of the assignment's
--- StartDate rather than "today". This matters for a fleet management
--- system that also records historical assignments: a driver who held a
--- valid certificate when an assignment began, which has since lapsed
--- without the assignment being renewed, is still a legitimate historical
--- record (and is exactly what view_unauthorized_vehicle_operation and
--- view_expired_certifications exist to surface for the fleet manager to
--- act on) -- it should not make importing that history impossible.
--- Vehicle status is checked against its current value, since the vehicle
--- table only tracks current status, not a history of status changes.
+-- Raises SIGNAL SQLSTATE '45000' on the first rule violated (mysqli
+-- surfaces this as a mysqli_sql_exception). Certification/score checks
+-- use the assignment's StartDate, not today, so historical assignments
+-- stay valid even if a cert has since lapsed. Vehicle status uses its
+-- current value only (no status history tracked).
 -- ---------------------------------------------------------------------
 
 DELIMITER $$
@@ -285,7 +219,6 @@ BEGIN
 
     SET eff_date = COALESCE(p_start_date, CURDATE());
 
-    -- Rule: a vehicle Under Maintenance or Out of Service cannot be assigned.
     SELECT vs.StatusName, v.ClassificationID INTO v_status, v_classification
     FROM vehicle v
     JOIN vehicle_status vs ON v.StatusID = vs.StatusID
@@ -296,8 +229,6 @@ BEGIN
             SET MESSAGE_TEXT = 'This vehicle cannot be assigned while Under Maintenance or Out of Service.';
     END IF;
 
-    -- Rule: driver must hold every certification the vehicle's category
-    -- requires, unexpired as of the assignment start date.
     SELECT vct.CertificationName INTO v_missing_cert
     FROM vehicle_type_certification_requirement vtcr
     JOIN vehicle_certification_type vct ON vct.CertificationTypeID = vtcr.CertificationTypeID
@@ -316,11 +247,7 @@ BEGIN
             SET MESSAGE_TEXT = 'Driver is missing a required, unexpired certification for this vehicle category.';
     END IF;
 
-    -- Rule: a driver with a safety score of 50 or below cannot be
-    -- assigned until they complete safety training. Uses the most
-    -- recent scored month at or before the assignment start; if the
-    -- driver has no score history yet, this check is skipped rather
-    -- than blocking on missing data.
+    -- No score history yet skips this check rather than blocking.
     SELECT msl.Score INTO v_score
     FROM monthly_score_log msl
     WHERE msl.DriverID = p_driver
@@ -333,9 +260,6 @@ BEGIN
             SET MESSAGE_TEXT = 'Driver safety score is 50 or below and must complete safety training before being assigned.';
     END IF;
 
-    -- Rule: a critical event makes a driver inactive (unassignable)
-    -- until the review is completed (a coaching_log entry recorded
-    -- against that event) or they complete safety training.
     SELECT COUNT(*) INTO v_unresolved_critical
     FROM behaviour_event be
     JOIN severity_level sl ON be.SeverityID = sl.SeverityID
@@ -361,10 +285,7 @@ BEGIN
     CALL sp_check_assignment_eligibility(NEW.VehicleID, NEW.DriverID, NEW.StartDate);
 END$$
 
--- Only re-checked when an assignment is being (re)activated -- i.e. it
--- is ending up with EndDate NULL and either wasn't active before, or
--- the vehicle/driver on the row is changing. Ending an assignment
--- (setting EndDate) never trips this.
+-- Only re-checked when (re)activating an assignment; ending one (setting EndDate) never trips this.
 DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update$$
 CREATE TRIGGER trg_vehicle_driver_assignment_before_update
 BEFORE UPDATE ON vehicle_driver_assignment

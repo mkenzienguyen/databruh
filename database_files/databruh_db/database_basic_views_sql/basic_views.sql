@@ -1,8 +1,8 @@
 USE databruh_db;
 
--- VIEW 1: Expired Driver Certifications
+-- View 1: Expired driver certifications
 CREATE OR REPLACE VIEW view_expired_certifications AS
-SELECT 
+SELECT
     d.DriverID,
     d.FullName AS DriverName,
     dl.DepotName AS AssignedDepot,
@@ -15,9 +15,9 @@ JOIN depot_location dl ON d.DepotID = dl.DepotID
 JOIN vehicle_certification_type vct ON dco.CertificationTypeID = vct.CertificationTypeID
 WHERE dco.ExpiryDate < CURDATE();
 
--- VIEW 2: Fleet Telematics & Driver Behavior Tracking
+-- View 2: Fleet telematics & driver behaviour tracking
 CREATE OR REPLACE VIEW view_driver_incidents AS
-SELECT 
+SELECT
     be.EventID,
     be.Timestamp,
     v.RegistrationNumber AS VehiclePlate,
@@ -35,11 +35,9 @@ LEFT JOIN driver d ON be.DriverID = d.DriverID
 LEFT JOIN depot_location dl ON be.DepotID = dl.DepotID
 JOIN severity_level sl ON be.SeverityID = sl.SeverityID;
 
--- =====================================================================
--- VIEW 3: Workshop Maintenance Summaries
--- =====================================================================
+-- View 3: Workshop maintenance summaries
 CREATE OR REPLACE VIEW view_vehicle_maintenance_summary AS
-SELECT 
+SELECT
     mj.JobID,
     v.VehicleID,
     v.RegistrationNumber AS VehiclePlate,
@@ -57,10 +55,9 @@ JOIN vehicle v ON mj.VehicleID = v.VehicleID
 JOIN vehicle_classification vc ON v.ClassificationID = vc.ClassificationID
 JOIN workshop w ON mj.WorkshopID = w.WorkshopID;
 
-
--- VIEW 4: Active Predictive Telematics Alerts
+-- View 4: Active predictive telematics alerts
 CREATE OR REPLACE VIEW view_active_alerts AS
-SELECT 
+SELECT
     a.AlertID,
     a.AlertName,
     a.AlertDescription,
@@ -76,17 +73,15 @@ JOIN depot_location dl ON v.DepotID = dl.DepotID
 JOIN vehicle_status vs ON v.StatusID = vs.StatusID
 WHERE a.Status IN ('New', 'Escalated');
 
--- =====================================================================
--- VIEW 5: Mechanic Workforce Qualifications Ledger
--- =====================================================================
+-- View 5: Mechanic workforce qualifications ledger
 CREATE OR REPLACE VIEW view_mechanic_certifications AS
-SELECT 
+SELECT
     m.MechanicID,
     m.FullName AS MechanicName,
     w.WorkshopName,
     ac.CertificationName AS QualificationName,
     mch.ExpiryDate,
-    CASE 
+    CASE
         WHEN mch.ExpiryDate < CURDATE() THEN 'Expired'
         ELSE 'Valid'
     END AS QualificationStatus
@@ -95,12 +90,9 @@ JOIN workshop w ON m.WorkshopID = w.WorkshopID
 JOIN mechanic_worker_certifications_history mch ON m.MechanicID = mch.MechanicID
 JOIN activity_certification ac ON mch.CertificationID = ac.CertificationID;
 
-
--- =====================================================================
--- VIEW 6: Part Replacement & Lifecycle Analysis
--- =====================================================================
+-- View 6: Part replacement & lifecycle analysis
 CREATE OR REPLACE VIEW view_part_consumption_lifecycle AS
-SELECT 
+SELECT
     p.PartID,
     p.PartName,
     pc.PartnerName AS PrimarySupplier,
@@ -116,11 +108,9 @@ LEFT JOIN maintenance_job mj ON ai.JobID = mj.JobID
 LEFT JOIN supplier_product_list spl ON p.PartID = spl.PartID AND p.PrimarySupplierID = spl.PartnerID
 GROUP BY p.PartID, p.PartName, pc.PartnerName;
 
--- =====================================================================
--- VIEW 6: Warranty Claims Checker
--- =====================================================================
+-- View 7: Warranty claims checker
 CREATE OR REPLACE VIEW view_active_warranty_ledger AS
-SELECT 
+SELECT
     wc.WarrantyClaimID,
     mj.VehicleID,
     v.RegistrationNumber AS VehiclePlate,
@@ -140,20 +130,8 @@ JOIN warranty_part_list wpl ON wc.WarrantyClaimID = wpl.WarrantyClaimID
 JOIN part p ON wpl.PartID = p.PartID
 LEFT JOIN supplier_product_list spl ON p.PartID = spl.PartID AND pc.PartnerID = spl.PartnerID;
 
--- =====================================================================
--- VIEW 7: Driver Monthly Score Anomaly Detection
---
--- Statistical (Z-score) outlier detection: for each driver, compares
--- every monthly score against that same driver's own historical mean
--- and standard deviation (STDDEV_SAMP), rather than a fleet-wide or
--- hand-picked threshold. A driver needs at least 2 recorded months
--- before a baseline can be established; until then ZScore/AnomalyStatus
--- are NULL/'Insufficient history' rather than dividing by zero.
--- Thresholds follow the common outlier convention of |Z| >= 2 for a
--- strong outlier, |Z| >= 1 for a mild one — applied only to score DROPS
--- (negative Z), since a score rising above a driver's own average is
--- not a safety concern.
--- =====================================================================
+-- View 8: Driver monthly score anomaly detection (Z-score vs. each
+-- driver's own history; needs 2+ months before a baseline exists).
 CREATE OR REPLACE VIEW view_driver_score_anomalies AS
 SELECT
     d.DriverID,
@@ -193,16 +171,7 @@ JOIN (
 ) stats ON stats.DriverID = msl.DriverID
 ORDER BY ZScore ASC;
 
--- =====================================================================
--- VIEW 8: Incident Review & Resolution
---
--- Every behaviour_event, joined to its coaching_log entry (if any). An
--- event with no matching coaching_log row is 'Unresolved' — this is the
--- single source of truth for "review driver incidents" and "monitor
--- unresolved incidents" on the fleet manager dashboard, and doubles as
--- the base table for driver/vehicle/depot/event type/severity/date
--- range search.
--- =====================================================================
+-- View 9: Incident review & resolution (unresolved = no coaching_log row)
 CREATE OR REPLACE VIEW view_incident_resolution AS
 SELECT
     vdi.EventID,
@@ -224,16 +193,7 @@ SELECT
 FROM view_driver_incidents vdi
 LEFT JOIN coaching_log cl ON cl.EventID = vdi.EventID;
 
--- =====================================================================
--- VIEW 9: Driver Risk & Retraining Summary
---
--- Per-driver incident counts (used to monitor high-risk drivers) plus a
--- count of coaching_log rows explicitly flagged 'Retraining Required'
--- (used to identify drivers requiring retraining). Severity thresholds
--- for what counts as "high risk" are applied in the application layer,
--- not baked into the view, so the dashboard can tune them without a
--- schema change.
--- =====================================================================
+-- View 10: Driver risk & retraining summary
 CREATE OR REPLACE VIEW view_driver_risk_summary AS
 SELECT
     d.DriverID,
@@ -251,9 +211,7 @@ LEFT JOIN behaviour_event be ON be.DriverID = d.DriverID
 LEFT JOIN severity_level sl ON be.SeverityID = sl.SeverityID
 GROUP BY d.DriverID, d.FullName, dl.DepotName;
 
--- =====================================================================
--- VIEW 10: Repeat Speeding Drivers
--- =====================================================================
+-- View 11: Repeat speeding drivers
 CREATE OR REPLACE VIEW view_repeat_speeding_drivers AS
 SELECT
     d.DriverID,
@@ -269,9 +227,7 @@ GROUP BY d.DriverID, d.FullName, dl.DepotName
 HAVING COUNT(*) >= 2
 ORDER BY SpeedingIncidents DESC;
 
--- =====================================================================
--- VIEW 11: Vehicles Associated With Severe Incidents
--- =====================================================================
+-- View 12: Vehicles associated with severe incidents
 CREATE OR REPLACE VIEW view_severe_incident_vehicles AS
 SELECT
     v.VehicleID,
@@ -289,15 +245,7 @@ WHERE sl.LevelName IN ('High', 'Critical')
 GROUP BY v.VehicleID, v.RegistrationNumber, vc.ClassificationName, dl.DepotName
 ORDER BY SevereIncidentCount DESC;
 
--- =====================================================================
--- VIEW 12: Drivers Operating Outside Their Authorised Vehicle Categories
---
--- For every currently active vehicle-driver assignment, checks every
--- certification that vehicle's classification requires against the
--- driver's certification_owned records. A row here means the driver is
--- missing (or has let expire) a certification their currently assigned
--- vehicle requires.
--- =====================================================================
+-- View 13: Drivers operating outside their authorised vehicle category
 CREATE OR REPLACE VIEW view_unauthorized_vehicle_operation AS
 SELECT
     d.DriverID,
@@ -321,12 +269,7 @@ WHERE vda.EndDate IS NULL
         AND (dco.ExpiryDate IS NULL OR dco.ExpiryDate >= CURDATE())
   );
 
--- =====================================================================
--- VIEW 13: Vehicles Requiring Urgent Repair
---
--- A vehicle needs urgent attention if it has an unresolved (New or
--- Escalated) predictive alert, or its current status is Out of Service.
--- =====================================================================
+-- View 14: Vehicles requiring urgent repair (unresolved alert, or Out of Service)
 CREATE OR REPLACE VIEW view_urgent_repair_vehicles AS
 SELECT DISTINCT
     v.VehicleID,
@@ -346,9 +289,7 @@ LEFT JOIN alert a ON a.VehicleID = v.VehicleID AND a.Status IN ('New', 'Escalate
 WHERE vs.StatusName = 'Out of Service' OR a.AlertID IS NOT NULL
 ORDER BY a.AlertTimestamp DESC;
 
--- =====================================================================
--- VIEW 14: Vehicles Awaiting Inspection
--- =====================================================================
+-- View 15: Vehicles awaiting inspection
 CREATE OR REPLACE VIEW view_vehicles_awaiting_inspection AS
 SELECT
     v.VehicleID,
@@ -362,9 +303,7 @@ LEFT JOIN vehicle_classification vc ON v.ClassificationID = vc.ClassificationID
 LEFT JOIN depot_location dl ON v.DepotID = dl.DepotID
 WHERE vs.StatusName = 'Awaiting Inspection';
 
--- =====================================================================
--- VIEW 15: Workshop Workload
--- =====================================================================
+-- View 16: Workshop workload
 CREATE OR REPLACE VIEW view_workshop_workload AS
 SELECT
     w.WorkshopID,
@@ -379,9 +318,7 @@ LEFT JOIN maintenance_job mj ON mj.WorkshopID = w.WorkshopID
 LEFT JOIN mechanic_worker mw ON mw.WorkshopID = w.WorkshopID
 GROUP BY w.WorkshopID, w.WorkshopName, dl.DepotName;
 
--- =====================================================================
--- VIEW 16: Maintenance Cost By Vehicle Model
--- =====================================================================
+-- View 17: Maintenance cost by vehicle model
 CREATE OR REPLACE VIEW view_maintenance_cost_by_model AS
 SELECT
     v.Manufacturer,
@@ -396,16 +333,8 @@ WHERE mj.Status = 'Closed'
 GROUP BY v.Manufacturer, v.Model
 ORDER BY TotalCostVND DESC;
 
--- =====================================================================
--- VIEW 17: Vehicles Overdue For Service
---
--- Compares each vehicle's last closed maintenance_job against its
--- classification's current maintenance_schedule_rule. A vehicle with no
--- service history is measured from an assumed commission date of
--- January 1 of its YearOfManufacture. Changing a rule's IntervalDays
--- only changes this forward-looking comparison — it never rewrites the
--- underlying maintenance_job rows.
--- =====================================================================
+-- View 18: Vehicles overdue for service (no history: measured from
+-- Jan 1 of YearOfManufacture)
 CREATE OR REPLACE VIEW view_vehicles_overdue_for_service AS
 SELECT
     v.VehicleID,
@@ -431,13 +360,8 @@ LEFT JOIN (
 HAVING DaysSinceService > msr.IntervalDays
 ORDER BY DaysSinceService DESC;
 
--- =====================================================================
--- VIEW 18: Vehicles With Repeated Component Failures
---
--- Flags a vehicle when the same activity type (e.g. "Brake Service")
--- has been performed on it two or more times — a signal of a recurring
--- fault rather than routine maintenance.
--- =====================================================================
+-- View 19: Vehicles with repeated component failures (same activity
+-- type performed 2+ times)
 CREATE OR REPLACE VIEW view_repeated_component_failures AS
 SELECT
     v.VehicleID,
@@ -453,9 +377,7 @@ GROUP BY v.VehicleID, v.RegistrationNumber, at.ActivityTypeName
 HAVING COUNT(*) >= 2
 ORDER BY OccurrenceCount DESC;
 
--- =====================================================================
--- VIEW 19: Parts Below Reorder Threshold
--- =====================================================================
+-- View 20: Parts below reorder threshold
 CREATE OR REPLACE VIEW view_parts_below_reorder AS
 SELECT
     p.PartID,
@@ -468,26 +390,8 @@ JOIN partner_company pc ON p.PrimarySupplierID = pc.PartnerID
 WHERE p.QuantityOnHand <= p.ReorderThreshold
 ORDER BY (p.ReorderThreshold - p.QuantityOnHand) DESC;
 
--- =====================================================================
--- VIEW 20: Supplier Performance
---
--- Parts supplied is attributed via activity_instance_part_used.SupplierID
--- (the supplier that actually fulfilled each recorded usage), not the
--- part's current PrimarySupplierID, so this stays accurate even after a
--- part's primary supplier changes.
--- =====================================================================
--- =====================================================================
--- VIEW 21: Coaching / Training Compliance
---
--- "A driver with a score of 75 or below must attend driver coaching. A
--- driver with a safety score of 50 or below cannot be assigned to a
--- vehicle until they complete safety training." Surfaces this against
--- each driver's most recent scored month (the assignment-eligibility
--- trigger in business_rules.sql enforces the <=50 half of this at the
--- database layer; this view is what lets the fleet manager see it, and
--- act on the <=75 half, which is a monitoring requirement rather than a
--- hard block).
--- =====================================================================
+-- View 21: Coaching / training compliance (score <= 75 needs coaching,
+-- <= 50 blocks assignment)
 CREATE OR REPLACE VIEW view_coaching_required AS
 SELECT
     d.DriverID,
@@ -515,6 +419,7 @@ JOIN (
 WHERE latest.Score <= 75
 ORDER BY latest.Score ASC;
 
+-- View 22: Supplier performance (attributed via activity_instance_part_used.SupplierID)
 CREATE OR REPLACE VIEW view_supplier_performance AS
 SELECT
     pc.PartnerID,

@@ -226,10 +226,7 @@ while ($row = $anomalyResult->fetch_assoc()) {
     $scoreAnomalies[] = $row;
 }
 
-// Monthly score per driver, for the line chart below. Built as a
-// union of every (Year, Month) that appears for ANY driver so each
-// driver's line lands on the correct point on a shared axis, rather
-// than assuming every driver has the same months recorded.
+// Monthly score per driver, keyed to a shared axis of every (Year, Month) that appears for any driver.
 $driverScoresRaw = [];
 $scoreMonthKeys = [];
 $scoreResult = $conn->query(

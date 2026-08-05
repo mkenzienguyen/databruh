@@ -20,9 +20,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $confirm_pass = $_POST['confirm_password'];
     $typeID = trim((string) ($_POST['type_id'] ?? ''));
 
-    // Self-signup is limited to DRIVER and MECHANIC. FLEET_MGR and WS_MGR
-    // carry elevated access and can only be granted by an administrator
-    // via admin_page.php, never claimed at signup.
+    // FLEET_MGR/WS_MGR can only be granted by an admin, never claimed at signup.
     $allowedRoles = ['MECHANIC', 'DRIVER'];
 
     if (empty($fullname) || empty($email) || empty($pass) || empty($confirm_pass) || $typeID === '') {
@@ -41,9 +39,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         die("Passwords do not match. <a href='signup.php'>Go back</a>");
     }
 
-    // New accounts start unlinked. Only an administrator can attach an
-    // account to a specific driver/mechanic operational record, so a new
-    // signup can't self-select someone else's identity.
+    // New accounts start unlinked; only an admin can attach an operational record.
     $linkedId = null;
 
     $check_stmt = $conn->prepare("SELECT AccountID FROM account WHERE Email = ?");

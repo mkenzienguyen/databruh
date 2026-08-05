@@ -83,7 +83,6 @@ INSERT INTO activity_instance (ActivityID, JobID, ActivityTypeID, LabourHours, D
 -- 9. Mechanic Activity Assignments (Workload Distribution)
 -- ==========================================
 -- Job M1021: Brake Service (Hoang Van Duc [ME-12] & Pham Thi Lan [ME-15])
--- — per-mechanic hours matching the brief's own example table exactly.
 INSERT INTO activity_instance_worker_assigned (ActivityID, MechanicID, LabourHours) VALUES
 (101, 'ME-12', 2.5),
 (101, 'ME-15', 2.5);
@@ -104,11 +103,8 @@ UPDATE activity_instance SET RepeatFault = TRUE WHERE ActivityID = 102;
 UPDATE activity_instance SET WarrantyApplicable = TRUE WHERE ActivityID = 104;
 
 -- ==========================================
--- 9b. Open Job: Repeat Refrigeration Failure on VEH-002
+-- 9b. Open Job: Repeat Refrigeration Failure on VEH-002 (third occurrence)
 -- ==========================================
--- Third occurrence of the same failure on this vehicle - demonstrates
--- view_repeated_component_failures, and leaves one open job/activity for
--- the workshop manager and mechanic dashboards to act on.
 INSERT INTO maintenance_job (JobID, VehicleID, WorkshopID, StartDate, EndDate, Status, AlertID, TotalCost) VALUES
 (1023, 'VEH-002', 2, '2026-06-01 09:00:00', NULL, 'Open', NULL, NULL);
 
@@ -144,9 +140,6 @@ INSERT INTO mechanic_worker (MechanicID, FullName, EmploymentStatus, EmergencyCo
 -- ==========================================
 -- Additional Mechanic Certification History
 -- ==========================================
--- Fills the previously-empty EV Technician (2) and Heavy Vehicle (4)
--- mechanic certifications so those activity types have a qualified
--- mechanic to assign.
 INSERT INTO mechanic_worker_certifications_history (MechanicID, CertificationID, IssueDate, ExpiryDate) VALUES
 ('ME-21', 1, '2023-01-10', '2033-01-10'),
 ('ME-21', 2, '2023-05-01', '2029-05-01'),

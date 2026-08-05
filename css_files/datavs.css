@@ -214,6 +214,76 @@
     background: rgba(113, 128, 107, 0.16);
 }
 
+/* Sortable table headers - classes added at runtime by sortable_tables.js */
+.admin-table th.is-sortable,
+.data-table th.is-sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 160ms ease;
+}
+
+.admin-table th.is-sortable:hover,
+.admin-table th.is-sortable:focus-visible,
+.data-table th.is-sortable:hover,
+.data-table th.is-sortable:focus-visible {
+    background: var(--ink-soft);
+}
+
+.admin-table th.is-sortable:focus-visible,
+.data-table th.is-sortable:focus-visible {
+    outline: 2px solid var(--acid);
+    outline-offset: -2px;
+}
+
+.admin-table th .sort-indicator,
+.data-table th .sort-indicator {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-left: 0.4rem;
+    width: 0.55rem;
+    height: 0.55rem;
+    opacity: 0.3;
+    transition: opacity 160ms ease, transform 200ms ease;
+}
+
+.admin-table th .sort-indicator::before,
+.data-table th .sort-indicator::before {
+    content: "";
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 0.28rem solid transparent;
+    border-right: 0.28rem solid transparent;
+    border-bottom: 0.38rem solid currentColor;
+}
+
+.admin-table th.is-sortable:hover .sort-indicator,
+.data-table th.is-sortable:hover .sort-indicator {
+    opacity: 0.65;
+}
+
+.admin-table th.is-sorted-asc .sort-indicator,
+.admin-table th.is-sorted-desc .sort-indicator,
+.data-table th.is-sorted-asc .sort-indicator,
+.data-table th.is-sorted-desc .sort-indicator {
+    opacity: 1;
+}
+
+.admin-table th.is-sorted-desc .sort-indicator,
+.data-table th.is-sorted-desc .sort-indicator {
+    transform: rotate(180deg);
+}
+
+@keyframes table-row-sorted-flash {
+    from { background-color: rgba(223, 231, 219, 0.55); }
+    to { background-color: transparent; }
+}
+
+.admin-table tbody tr.is-just-sorted,
+.data-table tbody tr.is-just-sorted {
+    animation: table-row-sorted-flash 550ms ease-out;
+}
+
 .cell-strong {
     font-weight: 800;
 }

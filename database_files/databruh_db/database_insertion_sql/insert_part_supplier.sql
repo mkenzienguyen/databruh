@@ -37,12 +37,6 @@ INSERT INTO supplier_product_list (PartID, PartnerID, CostPerUnit, Description) 
 -- ==========================================
 -- 4. Parts Used in Activities
 -- ==========================================
--- Activity 101: Brake Service on Job M1021 (Requires Brake Pads)
--- Activity 102: Tyre Replacement on Job M1021 (Requires Tyre)
--- Activity 104: Refrigeration Repair on Job M1022 (Requires Belts)
--- SupplierID records who actually fulfilled that specific usage, matching
--- each part's current PrimarySupplierID at seed time (see full_creation_script.sql
--- comment on activity_instance_part_used for why this is tracked separately).
 INSERT INTO activity_instance_part_used (ActivityID, PartID, QuantityUsed, SupplierID) VALUES
 (101, 501, 1, 3), -- Used 1 Set of Front Brake Pads for VEH-001, supplied by Hanoi Auto Parts JSC
 (102, 502, 2, 4), -- Used 2 New Tyres for VEH-001, supplied by Saigon Fleet Supplies Co.
@@ -64,8 +58,7 @@ INSERT INTO warranty_part_list (WarrantyClaimID, PartID) VALUES
 -- ==========================================
 -- 7. Part Inventory Levels
 -- ==========================================
--- Tyres (502) are seeded below their reorder threshold to demonstrate
--- view_parts_below_reorder.
+-- Tyres (502) are seeded below their reorder threshold.
 UPDATE part SET QuantityOnHand = 40, ReorderThreshold = 15 WHERE PartID = 501;
 UPDATE part SET QuantityOnHand = 8,  ReorderThreshold = 10 WHERE PartID = 502;
 UPDATE part SET QuantityOnHand = 20, ReorderThreshold = 5  WHERE PartID = 503;
