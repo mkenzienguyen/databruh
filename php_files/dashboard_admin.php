@@ -793,6 +793,7 @@ $conn->close();
                     data: series.data,
                     borderColor: scoreColors[index % scoreColors.length],
                     backgroundColor: 'transparent',
+                    spanGaps: true,
                     tension: 0.3,
                     pointRadius: 3,
                     pointHoverRadius: 5
