@@ -1,20 +1,5 @@
 USE databruh_db;
 
-ALTER TABLE workshop
-    ADD UNIQUE INDEX uq_workshop_depot (DepotID);
-
-ALTER TABLE activity_instance
-    ADD COLUMN RepeatFault BOOLEAN NOT NULL DEFAULT FALSE,
-    ADD COLUMN WarrantyApplicable BOOLEAN NOT NULL DEFAULT FALSE;
-
-ALTER TABLE activity_instance_worker_assigned
-    ADD COLUMN LabourHours DECIMAL(4,2) NULL;
-
-UPDATE activity_instance_worker_assigned aiwa
-JOIN activity_instance ai ON aiwa.ActivityID = ai.ActivityID
-SET aiwa.LabourHours = ai.LabourHours
-WHERE aiwa.LabourHours IS NULL;
-
 DELIMITER $$
 
 DROP TRIGGER IF EXISTS trg_activity_worker_hours_after_insert$$
@@ -52,10 +37,6 @@ BEGIN
     )
     WHERE ActivityID = OLD.ActivityID;
 END$$
-
-DELIMITER ;
-
-DELIMITER $$
 
 DROP PROCEDURE IF EXISTS sp_recalculate_driver_month_score$$
 CREATE PROCEDURE sp_recalculate_driver_month_score(
@@ -165,10 +146,6 @@ BEGIN
         CALL sp_recalculate_driver_month_score(OLD.DriverID, YEAR(OLD.Timestamp), MONTH(OLD.Timestamp));
     END IF;
 END$$
-
-DELIMITER ;
-
-DELIMITER $$
 
 DROP PROCEDURE IF EXISTS sp_check_assignment_eligibility$$
 CREATE PROCEDURE sp_check_assignment_eligibility(
