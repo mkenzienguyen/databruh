@@ -1,6 +1,3 @@
-# Generated benchmark data (tools/generate_mock_data.py).
-# The generator is committed; its output is not -- regenerate with:
-#   python3 tools/generate_mock_data.py -o mock_data.sql
 mock_data.sql
 *.mock.sql
 

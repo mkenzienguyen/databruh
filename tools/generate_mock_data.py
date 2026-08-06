@@ -1,36 +1,30 @@
 #!/usr/bin/env python3
+r"""
+Generate mock data for databruh_db to test database performance.
+
+XAMPP Execution Instructions:
+
+[WINDOWS (CMD / PowerShell)]
+1. Generate SQL:
+    python tools/generate_mock_data.py -o mock_data.sql
+
+2. Import mock data:
+    C:\xampp\mysql\bin\mysql.exe -u root databruh_db < mock_data.sql
+
+3. Re-apply business rules / triggers:
+    C:\xampp\mysql\bin\mysql.exe -u root databruh_db < database_files/databruh_db/database_creation_sql/individual_files/business_rules.sql
+
+
+[LINUX (Terminal)]
+1. Generate SQL:
+    python3 tools/generate_mock_data.py -o mock_data.sql
+
+2. Import mock data:
+    /opt/lampp/bin/mysql -u root databruh_db < mock_data.sql
+
+3. Re-apply business rules / triggers:
+    /opt/lampp/bin/mysql -u root databruh_db < database_files/databruh_db/database_creation_sql/individual_files/business_rules.sql
 """
-Generate bulk mock data for databruh_db, in the shape of the existing
-seed in database_insertion_sql/insert_full_script.sql.
-
-Purpose: the shipped seed (8 vehicles, ~25 behaviour events) is far too
-small to demonstrate anything about index performance -- every table
-fits in a page or two, so the optimiser correctly ignores indexes and
-full-scans instead. This produces enough volume for EXPLAIN and the
-Handler_read_* counters to show a real difference.
-
-Usage
------
-    python3 tools/generate_mock_data.py --events 200000 --jobs 20000 \
-        --drivers 400 --vehicles 300 -o mock_data.sql
-
-Then, from database_files/databruh_db/:
-
-    mysql -u root databruh_db < ../../mock_data.sql
-    mysql -u root databruh_db < database_creation_sql/business_rules.sql
-
-The second command is required: this script drops the per-row triggers
-before loading (they call a stored procedure per inserted row, which
-turns a 200k insert into an overnight job), and re-running
-business_rules.sql puts them back. Monthly scores are computed here in
-Python using the same penalty rules, so nothing is lost by bypassing
-the trigger during load.
-
-The generated data APPENDS to the existing seed. IDs start at high
-offsets so nothing collides with the hand-written demo rows, which stay
-intact and keep demonstrating the edge cases they were written for.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -39,17 +33,12 @@ import random
 import sys
 from pathlib import Path
 
-# --------------------------------------------------------------------
-# Reference data, mirroring the seed's lookup tables.
-# --------------------------------------------------------------------
+# --- Reference Data & Seed Constants ---
 
 DEPOTS = {1: "Hanoi", 2: "Ho Chi Minh City", 3: "Da Nang", 4: "Can Tho"}
-
-# Registration prefixes follow the seed's regional convention.
 DEPOT_PLATE_PREFIX = {1: "29", 2: "51", 3: "43", 4: "65"}
 PLATE_SERIES = "ABCDEFGH"
 
-# ClassificationID -> name (1..5, matching vehicle_classification)
 CLASSIFICATIONS = {
     1: "Delivery Van",
     2: "Refrigerated Truck",
@@ -58,12 +47,9 @@ CLASSIFICATIONS = {
     5: "Heavy Transport Truck",
 }
 
-# Assignable statuses only. 3 = Under Maintenance and 5 = Out of Service
-# are excluded because sp_check_assignment_eligibility rejects them.
-ASSIGNABLE_STATUS = [1, 2]          # Active, Available
-ALL_STATUS = [1, 2, 3, 4, 5]        # + Under Maintenance, Awaiting Inspection, Out of Service
+ASSIGNABLE_STATUS = [1, 2]
+ALL_STATUS = [1, 2, 3, 4, 5]
 
-# vehicle_type_certification_requirement, straight from the brief matrix.
 CLASS_REQUIRED_CERTS = {
     1: {1},
     2: {1, 2, 3},
@@ -86,7 +72,6 @@ MIDDLE = ["Van", "Thi", "Quoc", "Duc", "Minh", "Thanh", "Ngoc", "Huu", "Xuan", "
 GIVEN = ["An", "Bich", "Minh", "Long", "Hoa", "Kiet", "Ngoc", "Phuc", "Mai", "Son",
          "Tuan", "Linh", "Hung", "Trang", "Nam", "Yen", "Dung", "Thao", "Khanh", "Vy"]
 
-# (EventType, SeverityID) with weights. Severity: 1 Low, 2 Med, 3 High, 4 Critical.
 EVENT_PROFILE = [
     ("Harsh Braking",     [(1, 70), (2, 25), (3, 5)]),
     ("Speeding",          [(1, 20), (2, 40), (3, 32), (4, 8)]),
@@ -107,7 +92,6 @@ ALERT_TYPES = [
 ]
 ALERT_STATUSES = [("Resolved", 60), ("New", 20), ("Escalated", 20)]
 
-# ActivityTypeID -> required mechanic CertificationID (activity_type table)
 ACTIVITY_TYPES = {
     1: ("Routine Inspection", 1), 2: ("Preventative Servicing", 1),
     3: ("Diagnostic Testing", 1), 4: ("Emergency Repair", 1),
@@ -116,7 +100,6 @@ ACTIVITY_TYPES = {
     9: ("Brake Service", 1), 10: ("Tyre Replacement", 1),
 }
 
-# Which activity types make sense for which vehicle class.
 CLASS_ACTIVITIES = {
     1: [1, 2, 3, 4, 5, 9, 10],
     2: [1, 2, 3, 4, 5, 7, 9, 10],
@@ -132,18 +115,15 @@ DIAGNOSTICS = [
     "Seals replaced", "Filter clogged - replaced",
 ]
 
-# Existing seed IDs we must not collide with.
 ID_OFFSET = 100000
 DRIVER_PREFIX = "D-9"
 VEHICLE_PREFIX = "VEH-9"
 MECHANIC_PREFIX = "ME-9"
 
-# Monthly safety score penalties (must match sp_recalculate_driver_month_score).
 SEVERITY_PENALTY = {1: 2, 2: 5, 3: 10, 4: 20}
 
 
 def weighted(rng: random.Random, pairs):
-    """pairs = [(value, weight), ...]"""
     total = sum(w for _, w in pairs)
     r = rng.uniform(0, total)
     upto = 0.0
@@ -161,8 +141,7 @@ def esc(s: str | None) -> str:
 
 
 def batched_insert(out, table: str, columns: list[str], rows: list[tuple], batch: int = 500):
-    """Emit multi-row INSERTs. One statement per 500 rows keeps each
-    packet well under max_allowed_packet while staying fast."""
+    """Emit multi-row INSERT statements in batches to keep packet sizes within limits."""
     if not rows:
         return
     collist = ", ".join(columns)
@@ -198,18 +177,9 @@ def build(args) -> str:
         return dt.datetime.combine(d, dt.time(rng.randint(5, 21), rng.choice([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55])))
 
     out.write(f"""-- Generated by tools/generate_mock_data.py
--- seed={args.seed}  drivers={args.drivers}  vehicles={args.vehicles}
--- mechanics={args.mechanics}  events={args.events}  jobs={args.jobs}
+-- seed={args.seed} drivers={args.drivers} vehicles={args.vehicles}
+-- mechanics={args.mechanics} events={args.events} jobs={args.jobs}
 -- period: {start} .. {end}
---
--- Appends to the existing seed; IDs are offset so nothing collides.
---
--- IMPORTANT: the per-row triggers are dropped below. They call a stored
--- procedure for every inserted row, which makes a bulk load take hours.
--- Monthly scores are computed here instead, using the same penalty
--- rules. After loading this file, re-run business_rules.sql to restore
--- the triggers:
---     mysql -u root databruh_db < database_creation_sql/business_rules.sql
 
 USE databruh_db;
 
@@ -217,6 +187,7 @@ SET @OLD_UNIQUE_CHECKS = @@UNIQUE_CHECKS, UNIQUE_CHECKS = 0;
 SET @OLD_FOREIGN_KEY_CHECKS = @@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS = 0;
 SET @OLD_AUTOCOMMIT = @@AUTOCOMMIT, AUTOCOMMIT = 0;
 
+-- Drop triggers to prevent per-row SP execution during load
 DROP TRIGGER IF EXISTS trg_behaviour_event_score_after_insert;
 DROP TRIGGER IF EXISTS trg_behaviour_event_score_after_update;
 DROP TRIGGER IF EXISTS trg_behaviour_event_score_after_delete;
@@ -228,7 +199,7 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
 
 """)
 
-    # ---------------- vehicles ----------------
+    # --- Vehicles ---
     vehicles = []
     used_plates = set()
     for i in range(args.vehicles):
@@ -243,7 +214,6 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
                 break
         make, model = rng.choice(MODELS_BY_CLASS[cls])
         year = rng.randint(2016, 2025)
-        # Most vehicles assignable; a minority in maintenance / out of service.
         status = weighted(rng, [(1, 46), (2, 30), (3, 10), (4, 7), (5, 7)])
         odo = rng.randint(5_000, 320_000)
         vehicles.append((vid, plate, make, model, cls, year, status, depot, odo))
@@ -254,7 +224,7 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
                     "CurrentOdometer"],
                    vehicles)
 
-    # ---------------- drivers ----------------
+    # --- Drivers ---
     drivers = []
     for i in range(args.drivers):
         did = f"{DRIVER_PREFIX}{i:04d}"
@@ -273,12 +243,7 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
                     "EmergencyContactDetails"],
                    drivers)
 
-    # ---------------- driver certifications ----------------
-    # Every generated driver holds all five certifications, issued before
-    # the data window and expiring after it. That guarantees any
-    # assignment satisfies sp_check_assignment_eligibility regardless of
-    # which vehicle class it draws. A small slice get a lapsed cert for
-    # realism -- those are excluded from assignment below.
+    # --- Driver Certifications ---
     cert_rows = []
     lapsed_drivers = set()
     for did, *_ in drivers:
@@ -287,17 +252,14 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
             lapsed_drivers.add(did)
         for ct in (1, 2, 3, 4, 5):
             issue = start - dt.timedelta(days=rng.randint(200, 1200))
-            if lapse and ct == 1:
-                expiry = end - dt.timedelta(days=rng.randint(10, 300))
-            else:
-                expiry = end + dt.timedelta(days=rng.randint(200, 1600))
+            expiry = (end - dt.timedelta(days=rng.randint(10, 300))) if (lapse and ct == 1) else (end + dt.timedelta(days=rng.randint(200, 1600)))
             cert_rows.append((did, ct, issue.isoformat(), expiry.isoformat()))
 
     batched_insert(out, "driver_certification_owned",
                    ["DriverID", "CertificationTypeID", "IssueDate", "ExpiryDate"],
                    cert_rows)
 
-    # ---------------- mechanics ----------------
+    # --- Mechanics ---
     mechanics = []
     mech_cert_rows = []
     for i in range(args.mechanics):
@@ -306,8 +268,6 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
         ws = rng.randint(1, 3)
         mechanics.append((mid, name, "Active",
                           f"Family - 09{rng.randint(10_000_000, 99_999_999)}", ws))
-        # All four mechanic certifications, valid across the window, so any
-        # activity type can be staffed.
         for ct in (1, 2, 3, 4):
             issue = start - dt.timedelta(days=rng.randint(200, 1500))
             expiry = end + dt.timedelta(days=rng.randint(300, 2000))
@@ -320,21 +280,16 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
                    ["MechanicID", "CertificationID", "IssueDate", "ExpiryDate"],
                    mech_cert_rows)
 
-    # ---------------- vehicle-driver assignments ----------------
-    # Assignments are dated before the event window so that the
-    # "unresolved critical event" and "score <= 50" checks in the trigger
-    # have nothing to trip on (both look only at data at or before the
-    # assignment start date).
+    # --- Vehicle-Driver Assignments ---
     assignable = [v for v in vehicles if v[6] in ASSIGNABLE_STATUS]
     eligible_drivers = [d[0] for d in drivers
                         if d[0] not in lapsed_drivers and d[5] == "Active"]
     assignments = []
-    driver_vehicle = {}   # driver -> vehicle, for realistic event pairing
+    driver_vehicle = {}
     if eligible_drivers:
         for idx, v in enumerate(assignable):
             did = eligible_drivers[idx % len(eligible_drivers)]
             sd = start + dt.timedelta(days=rng.randint(0, 20))
-            # A minority are historical (closed) assignments.
             if rng.random() < 0.22:
                 ed = sd + dt.timedelta(days=rng.randint(30, max(31, span_days - 30)))
                 assignments.append((v[0], did, sd.isoformat(), ed.isoformat()))
@@ -345,12 +300,9 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
     batched_insert(out, "vehicle_driver_assignment",
                    ["VehicleID", "DriverID", "StartDate", "EndDate"], assignments)
 
-    # ---------------- behaviour events ----------------
-    # Only drivers with a current vehicle generate events, so every event
-    # is attributable to a plausible vehicle/depot pairing.
+    # --- Behaviour Events ---
     pairs = [(d, v, depot) for d, vs in driver_vehicle.items() for (v, depot, _) in vs]
     event_rows = []
-    # month -> driver -> [severity, event_type] for score computation
     monthly: dict[tuple[str, int, int], list[tuple[int, str]]] = {}
     event_window_start = start + dt.timedelta(days=30)
 
@@ -374,9 +326,7 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
                     "SeverityID", "EventType", "Description"],
                    event_rows, batch=1000)
 
-    # ---------------- monthly scores (computed, not triggered) ----------
-    # Mirrors sp_recalculate_driver_month_score exactly: base 100, minus
-    # per-event penalties, minus the flat monthly deductions.
+    # --- Monthly Scores ---
     score_rows = []
     for (did, year, month), evs in monthly.items():
         deduction = sum(SEVERITY_PENALTY[s] for s, _ in evs)
@@ -394,7 +344,7 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
     batched_insert(out, "monthly_score_log",
                    ["DriverID", "Month", "Year", "Score"], score_rows, batch=1000)
 
-    # ---------------- alerts ----------------
+    # --- Alerts ---
     alert_rows = []
     n_alerts = max(1, args.jobs // 2)
     for n in range(n_alerts):
@@ -408,18 +358,18 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
                    ["AlertID", "AlertName", "VehicleID", "AlertDescription",
                     "AlertTimestamp", "Status"], alert_rows, batch=1000)
 
-    # ---------------- maintenance jobs + activities ----------------
+    # --- Maintenance Jobs & Activities ---
     job_rows, act_rows, worker_rows = [], [], []
     act_id = ID_OFFSET
     for n in range(args.jobs):
         v = rng.choice(vehicles)
-        cls = v[4]
-        depot = v[7]
-        workshop = depot if depot <= 3 else rng.randint(1, 3)   # 3 workshops seeded
+        cls, depot = v[4], v[7]
+        workshop = depot if depot <= 3 else rng.randint(1, 3)
         sd = rand_dt()
         closed = rng.random() < 0.82
         job_id = ID_OFFSET + n
         alert_id = (ID_OFFSET + rng.randrange(n_alerts)) if rng.random() < 0.45 else None
+        
         if closed:
             ed = sd + dt.timedelta(hours=rng.randint(2, 72))
             cost = rng.randrange(300_000, 12_000_000, 10_000)
@@ -436,8 +386,7 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
             act_rows.append((act_id, job_id, atype, round(per_hours * n_mech, 2),
                              rng.choice(DIAGNOSTICS),
                              rng.random() < 0.18, rng.random() < 0.09))
-            chosen = rng.sample(mechanics, min(n_mech, len(mechanics)))
-            for m in chosen:
+            for m in rng.sample(mechanics, min(n_mech, len(mechanics))):
                 worker_rows.append((act_id, m[0], per_hours))
             act_id += 1
 
@@ -451,7 +400,7 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
     batched_insert(out, "activity_instance_worker_assigned",
                    ["ActivityID", "MechanicID", "LabourHours"], worker_rows, batch=1000)
 
-    # ---------------- coaching, for a slice of severe incidents ----------
+    # --- Coaching Logs ---
     coaching_rows = []
     severe = [e for e in event_rows if e[5] in (3, 4)]
     rng.shuffle(severe)
@@ -476,15 +425,10 @@ SET UNIQUE_CHECKS = @OLD_UNIQUE_CHECKS;
 SET FOREIGN_KEY_CHECKS = @OLD_FOREIGN_KEY_CHECKS;
 SET AUTOCOMMIT = @OLD_AUTOCOMMIT;
 
--- Refresh optimiser statistics so EXPLAIN reflects the new row counts.
--- Without this, index benchmarking can read from stale cardinality.
 ANALYZE TABLE behaviour_event, maintenance_job, activity_instance,
               activity_instance_worker_assigned, vehicle, driver,
               vehicle_driver_assignment, monthly_score_log, alert,
               coaching_log;
-
--- Reminder: re-run business_rules.sql now to restore the triggers this
--- file dropped.
 """)
 
     return out.getvalue()
@@ -494,16 +438,13 @@ def main() -> int:
     p = argparse.ArgumentParser(
         description="Generate bulk mock data for databruh_db.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument("--drivers", type=int, default=400)
-    p.add_argument("--vehicles", type=int, default=300)
+    p.add_argument("--drivers", type=int, default=150)
+    p.add_argument("--vehicles", type=int, default=200)
     p.add_argument("--mechanics", type=int, default=40)
-    p.add_argument("--events", type=int, default=200_000,
-                   help="behaviour_event rows -- the main table for index tests")
-    p.add_argument("--jobs", type=int, default=20_000)
-    p.add_argument("--years", type=float, default=3.0,
-                   help="how far back the generated history runs")
-    p.add_argument("--seed", type=int, default=20260805,
-                   help="RNG seed; same seed gives byte-identical output")
+    p.add_argument("--events", type=int, default=1000, help="behaviour_event rows count")
+    p.add_argument("--jobs", type=int, default=200)
+    p.add_argument("--years", type=float, default=3.0, help="Years of generated history")
+    p.add_argument("--seed", type=int, default=20260805, help="RNG seed")
     p.add_argument("-o", "--output", default="mock_data.sql")
     args = p.parse_args()
 
@@ -512,15 +453,13 @@ def main() -> int:
     path.write_text(sql, encoding="utf-8")
 
     size_mb = path.stat().st_size / (1024 * 1024)
-    print(f"Wrote {path}  ({size_mb:.1f} MB)", file=sys.stderr)
-    print(f"  vehicles={args.vehicles} drivers={args.drivers} "
-          f"mechanics={args.mechanics}", file=sys.stderr)
-    print(f"  behaviour_event={args.events} maintenance_job={args.jobs}", file=sys.stderr)
-    print(file=sys.stderr)
-    print("Load with:", file=sys.stderr)
-    print(f"  mysql -u root databruh_db < {path}", file=sys.stderr)
-    print("  mysql -u root databruh_db < database_files/databruh_db/"
-          "database_creation_sql/business_rules.sql", file=sys.stderr)
+    print("\nLoad with (XAMPP Windows):", file=sys.stderr)
+    print(f"  C:\\xampp\\mysql\\bin\\mysql.exe -u root databruh_db < {path}", file=sys.stderr)
+    print(r"  C:\xampp\mysql\bin\mysql.exe -u root databruh_db < database_files/databruh_db/database_creation_sql/individual_files/business_rules.sql", file=sys.stderr)
+
+    print("\nLoad with (XAMPP Linux):", file=sys.stderr)
+    print(f"  /opt/lampp/bin/mysql -u root databruh_db < {path}", file=sys.stderr)
+    print("  /opt/lampp/bin/mysql -u root databruh_db < database_files/databruh_db/database_creation_sql/individual_files/business_rules.sql", file=sys.stderr)
     return 0
 
 

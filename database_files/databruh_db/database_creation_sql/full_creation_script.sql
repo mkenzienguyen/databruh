@@ -348,7 +348,7 @@ CREATE TABLE activity_instance_part_used (
 
 
 
-
+-- Business Rules
 DELIMITER $$
 
 DROP TRIGGER IF EXISTS trg_activity_worker_hours_after_insert$$
@@ -611,3 +611,120 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Base line defined data
+
+-- Depot Locations
+INSERT INTO depot_location (DepotName, DepotAddress) VALUES 
+('Hanoi', 'Lot CN-08, Road No. 4, Thach That - Quoc Oai Industrial Park, Phung Xa Commune, Thach That District, Hanoi'),
+('Ho Chi Minh City', 'Plot E2-D9, Street D2, Saigon Hi-Tech Park (SHTP), Long Thanh My Ward, Thu Duc City, Ho Chi Minh City'),
+('Da Nang', 'Road No. 5G, Da Nang High-Tech Park, Hoa Lien Commune, Hoa Vang District, Da Nang'),
+('Can Tho', 'Block B-15, Street No. 2, Hung Phu 1 Industrial Zone, Dong Phu Ward, Cai Rang District, Can Tho');
+
+-- Vehicle Classifications
+INSERT INTO vehicle_classification (ClassificationName) VALUES
+('Delivery Van'),
+('Refrigerated Truck'),
+('Electric Van'),
+('Service Vehicle'),
+('Heavy Transport Truck');
+
+-- Vehicle Operational Statuses
+INSERT INTO vehicle_status (StatusName) VALUES
+('Active'),
+('Available'),
+('Under Maintenance'),
+('Awaiting Inspection'),
+('Out of Service'),
+('Retired');
+
+-- Vehicle Certification Types
+INSERT INTO vehicle_certification_type (CertificationName) VALUES
+('Standard Licence'),
+('Heavy Vehicle Licence'),
+('Refrigerated Transport Certification'),
+('EV Certification'),
+('Hazardous Goods Certification');
+
+-- Severity Levels
+INSERT INTO severity_level (LevelName) VALUES
+('Low'),
+('Medium'),
+('High'),
+('Critical');
+
+
+-- Vehicle Type Certification Requirements
+INSERT INTO vehicle_type_certification_requirement (ClassificationID, CertificationTypeID) VALUES
+(1, 1), -- Delivery Van requires Standard Licence
+(2, 1), -- Refrigerated Truck also requires Standard Licence
+(2, 2), -- Refrigerated Truck requires Heavy Vehicle Licence
+(2, 3), -- Refrigerated Truck also requires Refrigerated Transport Certification
+(3, 1), -- Electric Van requires Standard Licence
+(3, 4), -- Electric Van also requires EV Certification
+(4, 1), -- Service Vehicle requires Standard Licence
+(5, 2), -- Heavy Transport Truck requires Heavy Vehicle Licence
+(5, 5); -- Heavy Transport Truck also requires Hazardous Goods Certification
+
+
+
+
+
+
+INSERT INTO workshop (WorkshopID, WorkshopName, WorkshopAddress, DepotID) VALUES
+(1, 'Ha Noi Central Workshop', 'Lot CN-08, Road No. 4, Thach That - Quoc Oai Industrial Park, Hanoi', 1),
+(2, 'HCMC South Workshop', 'Plot E2-D9, Street D2, Saigon Hi-Tech Park (SHTP), Thu Duc City, Ho Chi Minh City', 2),
+(3, 'Da Nang Coastal Workshop', 'Road No. 5G, Da Nang High-Tech Park, Hoa Vang District, Da Nang', 3);
+
+INSERT INTO activity_certification (CertificationID, CertificationName, Description) VALUES
+(1, 'Standard Vehicle Mechanic Licence', 'Covers routine inspections, servicing, diagnostics, emergency repairs, and component replacements.'),
+(2, 'EV Technician Certification', 'Required for electric vehicle battery and electrical repairs.'),
+(3, 'Refrigeration Systems Certification', 'Required for refrigeration system repairs on cold-chain trucks.'),
+(4, 'Heavy Vehicle Mechanic Licence', 'Required for repairs on heavy vehicle categories.');
+
+INSERT INTO activity_type (ActivityTypeID, ActivityTypeName, CertificationID) VALUES
+(1, 'Routine Inspection', 1),
+(2, 'Preventative Servicing', 1),
+(3, 'Diagnostic Testing', 1),
+(4, 'Emergency Repair', 1),
+(5, 'Component Replacement', 1),
+(6, 'EV Battery / Electrical Repair', 2),
+(7, 'Refrigeration System Repair', 3),
+(8, 'Heavy Vehicle Repair', 4),
+(9, 'Brake Service', 1),
+(10, 'Tyre Replacement', 1);
+
+INSERT INTO maintenance_schedule_rule (ClassificationID, IntervalDays, Description) VALUES
+(1, 180, 'Delivery Van: routine service every 6 months'),
+(2, 90, 'Refrigerated Truck: cold-chain duty cycle, serviced every 3 months'),
+(3, 180, 'Electric Van: routine service every 6 months'),
+(4, 120, 'Service Vehicle: serviced every 4 months'),
+(5, 90, 'Heavy Transport Truck: serviced every 3 months');
