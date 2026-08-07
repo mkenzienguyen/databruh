@@ -2,6 +2,18 @@
 r"""
 Generate mock data for databruh_db to test database performance.
 
+Defaults produce 200,000 behaviour events and 20,000 maintenance jobs --
+the volume needed for index benchmarking. Below roughly 50,000 rows the
+query optimiser correctly ignores indexes, because scanning a table that
+fits in a couple of pages is cheaper than an index lookup plus row fetch.
+
+    python3 tools/generate_mock_data.py -o mock_data.sql      # benchmark scale
+    python3 tools/generate_mock_data.py --small -o mock.sql   # light, app testing
+
+Rebuild the database before importing if it already holds generated
+data: rows use fixed IDs from 100000, so a second import collides on the
+primary key.
+
 XAMPP Execution Instructions:
 
 [WINDOWS (CMD / PowerShell)]
@@ -121,6 +133,32 @@ VEHICLE_PREFIX = "VEH-9"
 MECHANIC_PREFIX = "ME-9"
 
 SEVERITY_PENALTY = {1: 2, 2: 5, 3: 10, 4: 20}
+
+# Parts catalogue is reference data created by full_creation_script.sql
+# (PartIDs 1-30). Consumption is transactional, so it is generated here.
+# Mapping activity type -> plausible PartIDs keeps parts usage coherent:
+# a brake service consumes brake parts, not EV battery modules.
+PARTS_BY_ACTIVITY = {
+    1:  [15, 16, 17, 28],              # Routine Inspection
+    2:  [15, 16, 17, 18, 24, 28],      # Preventative Servicing
+    3:  [],                            # Diagnostic Testing - usually no parts
+    4:  [19, 20, 21, 25, 26, 30],      # Emergency Repair
+    5:  [21, 22, 25, 26, 27, 29, 30],  # Component Replacement
+    6:  [12, 13, 14],                  # EV Battery / Electrical Repair
+    7:  [8, 9, 10, 11],                # Refrigeration System Repair
+    8:  [19, 20, 21, 23, 24, 29],      # Heavy Vehicle Repair
+    9:  [1, 2, 3, 4],                  # Brake Service
+    10: [5, 6, 7],                     # Tyre Replacement
+}
+
+# PartID -> (primary supplier, backup supplier), mirroring the catalogue.
+PART_SUPPLIERS = {
+    1:(3,1), 2:(3,1), 3:(3,1), 4:(4,3), 5:(8,4), 6:(8,4), 7:(8,3),
+    8:(5,4), 9:(5,2), 10:(5,4), 11:(5,4), 12:(6,3), 13:(6,3), 14:(6,7),
+    15:(3,4), 16:(3,4), 17:(4,3), 18:(4,3), 19:(7,2), 20:(7,3), 21:(7,2),
+    22:(7,3), 23:(2,7), 24:(2,4), 25:(1,3), 26:(1,3), 27:(1,4), 28:(4,3),
+    29:(2,7), 30:(3,1),
+}
 
 
 def weighted(rng: random.Random, pairs):
@@ -246,13 +284,33 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
     # --- Driver Certifications ---
     cert_rows = []
     lapsed_drivers = set()
+    # "Drift" drivers keep a valid Standard Licence -- so they still pass
+    # the assignment trigger and get assigned -- but a specialist
+    # certification lapses partway through the window. That is the only
+    # way a driver ends up actively assigned to a vehicle they no longer
+    # qualify for, which is exactly what
+    # view_unauthorized_vehicle_operation exists to detect. Without this
+    # the view is always empty, because the trigger blocks anyone whose
+    # certification had already expired at assignment time.
+    drift_drivers = set()
     for did, *_ in drivers:
         lapse = rng.random() < 0.06
+        drift = (not lapse) and rng.random() < 0.05
         if lapse:
             lapsed_drivers.add(did)
+        if drift:
+            drift_drivers.add(did)
         for ct in (1, 2, 3, 4, 5):
             issue = start - dt.timedelta(days=rng.randint(200, 1200))
-            expiry = (end - dt.timedelta(days=rng.randint(10, 300))) if (lapse and ct == 1) else (end + dt.timedelta(days=rng.randint(200, 1600)))
+            if lapse and ct == 1:
+                # Standard Licence already expired -> never assignable.
+                expiry = end - dt.timedelta(days=rng.randint(10, 300))
+            elif drift and ct in (3, 4):
+                # Refrigerated / EV certification expired recently, well
+                # after the assignment began.
+                expiry = end - dt.timedelta(days=rng.randint(5, 120))
+            else:
+                expiry = end + dt.timedelta(days=rng.randint(200, 1600))
             cert_rows.append((did, ct, issue.isoformat(), expiry.isoformat()))
 
     batched_insert(out, "driver_certification_owned",
@@ -284,11 +342,20 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
     assignable = [v for v in vehicles if v[6] in ASSIGNABLE_STATUS]
     eligible_drivers = [d[0] for d in drivers
                         if d[0] not in lapsed_drivers and d[5] == "Active"]
+    # Drift drivers must land on a vehicle class that actually requires
+    # the certification that lapsed (class 2 needs cert 3, class 3 needs
+    # cert 4), otherwise the drift is invisible and
+    # view_unauthorized_vehicle_operation stays empty. Pair them
+    # deliberately rather than leaving it to chance.
+    drift_pool = [d for d in eligible_drivers if d in drift_drivers]
     assignments = []
     driver_vehicle = {}
     if eligible_drivers:
         for idx, v in enumerate(assignable):
-            did = eligible_drivers[idx % len(eligible_drivers)]
+            if v[4] in (2, 3) and drift_pool:
+                did = drift_pool.pop()
+            else:
+                did = eligible_drivers[idx % len(eligible_drivers)]
             sd = start + dt.timedelta(days=rng.randint(0, 20))
             if rng.random() < 0.22:
                 ed = sd + dt.timedelta(days=rng.randint(30, max(31, span_days - 30)))
@@ -360,6 +427,7 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
 
     # --- Maintenance Jobs & Activities ---
     job_rows, act_rows, worker_rows = [], [], []
+    part_used_rows, claim_rows, claim_part_rows = [], [], []
     act_id = ID_OFFSET
     for n in range(args.jobs):
         v = rng.choice(vehicles)
@@ -383,11 +451,46 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
             atype = rng.choice(CLASS_ACTIVITIES[cls])
             n_mech = 1 if rng.random() < 0.75 else 2
             per_hours = round(rng.uniform(0.5, 4.0), 2)
+            warranty = rng.random() < 0.09
             act_rows.append((act_id, job_id, atype, round(per_hours * n_mech, 2),
                              rng.choice(DIAGNOSTICS),
-                             rng.random() < 0.18, rng.random() < 0.09))
+                             rng.random() < 0.18, warranty))
             for m in rng.sample(mechanics, min(n_mech, len(mechanics))):
                 worker_rows.append((act_id, m[0], per_hours))
+
+            # Parts consumed by this activity. Only parts plausible for
+            # the activity type are used, and SupplierID records who
+            # actually fulfilled the usage -- normally the primary
+            # supplier, occasionally the backup (stock-out), which is
+            # what makes view_supplier_performance meaningful.
+            candidates = PARTS_BY_ACTIVITY.get(atype, [])
+            used_here = []
+            if candidates and rng.random() < 0.72:
+                for pid in rng.sample(candidates, min(len(candidates), rng.randint(1, 2))):
+                    primary, backup = PART_SUPPLIERS[pid]
+                    supplier = backup if (backup and rng.random() < 0.18) else primary
+                    qty = rng.randint(1, 4)
+                    part_used_rows.append((act_id, pid, qty, supplier))
+                    used_here.append((pid, supplier))
+
+            # A warranty claim covers one or more parts replaced during
+            # the activity. PartnerType on the supplier records whether
+            # the claim sits with the manufacturer or the parts supplier.
+            if warranty and used_here:
+                claim_id = f"WAR-{ID_OFFSET + len(claim_rows):06d}"
+                claim_supplier = used_here[0][1]
+                claim_date = sd + dt.timedelta(days=rng.randint(0, 5))
+                resolved = rng.random() < 0.6
+                claim_rows.append((
+                    claim_id, claim_supplier, act_id,
+                    "Resolved" if resolved else "On going",
+                    claim_date.strftime("%Y-%m-%d %H:%M:%S"),
+                    (claim_date + dt.timedelta(days=rng.randint(3, 40))
+                     ).strftime("%Y-%m-%d %H:%M:%S") if resolved else None,
+                ))
+                for pid, _ in used_here:
+                    claim_part_rows.append((claim_id, pid))
+
             act_id += 1
 
     batched_insert(out, "maintenance_job",
@@ -399,6 +502,14 @@ DROP TRIGGER IF EXISTS trg_vehicle_driver_assignment_before_update;
                    act_rows, batch=1000)
     batched_insert(out, "activity_instance_worker_assigned",
                    ["ActivityID", "MechanicID", "LabourHours"], worker_rows, batch=1000)
+    batched_insert(out, "activity_instance_part_used",
+                   ["ActivityID", "PartID", "QuantityUsed", "SupplierID"],
+                   part_used_rows, batch=1000)
+    batched_insert(out, "warranty_claim",
+                   ["WarrantyClaimID", "PartnerID", "ActivityID", "Status",
+                    "ClaimDate", "ClaimResolvedDate"], claim_rows, batch=1000)
+    batched_insert(out, "warranty_part_list",
+                   ["WarrantyClaimID", "PartID"], claim_part_rows, batch=1000)
 
     # --- Coaching Logs ---
     coaching_rows = []
@@ -438,21 +549,52 @@ def main() -> int:
     p = argparse.ArgumentParser(
         description="Generate bulk mock data for databruh_db.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    p.add_argument("--drivers", type=int, default=150)
-    p.add_argument("--vehicles", type=int, default=200)
+    # Defaults are sized for index benchmarking, which is what this tool
+    # exists for. Below roughly 50k rows the optimiser correctly ignores
+    # indexes -- a table that fits in a couple of pages is cheaper to
+    # scan than to look up -- so a small default would make every
+    # benchmark report "indexes don't help". Use --small for a light
+    # dataset when you only need the app populated.
+    p.add_argument("--drivers", type=int, default=400)
+    p.add_argument("--vehicles", type=int, default=300)
     p.add_argument("--mechanics", type=int, default=40)
-    p.add_argument("--events", type=int, default=1000, help="behaviour_event rows count")
-    p.add_argument("--jobs", type=int, default=200)
+    p.add_argument("--events", type=int, default=200_000,
+                   help="behaviour_event rows -- the main table under test")
+    p.add_argument("--jobs", type=int, default=20_000)
     p.add_argument("--years", type=float, default=3.0, help="Years of generated history")
     p.add_argument("--seed", type=int, default=20260805, help="RNG seed")
     p.add_argument("-o", "--output", default="mock_data.sql")
+    p.add_argument("--small", action="store_true",
+                   help="light dataset for app testing (1k events, 200 jobs) -- "
+                        "too small to demonstrate index performance")
     args = p.parse_args()
+
+    if args.small:
+        # Only override values the user didn't set explicitly.
+        supplied = {a.lstrip('-').split('=')[0] for a in sys.argv[1:]}
+        if 'events' not in supplied:
+            args.events = 1000
+        if 'jobs' not in supplied:
+            args.jobs = 200
+        if 'drivers' not in supplied:
+            args.drivers = 150
+        if 'vehicles' not in supplied:
+            args.vehicles = 200
 
     sql = build(args)
     path = Path(args.output)
     path.write_text(sql, encoding="utf-8")
 
     size_mb = path.stat().st_size / (1024 * 1024)
+    print(f"\nWrote {path} ({size_mb:.1f} MB)", file=sys.stderr)
+    print(f"  behaviour_event={args.events:,}  maintenance_job={args.jobs:,}  "
+          f"drivers={args.drivers}  vehicles={args.vehicles}", file=sys.stderr)
+    if args.events < 50_000:
+        print("\n  NOTE: below ~50k events the optimiser will ignore most indexes.",
+              file=sys.stderr)
+        print("  Fine for app testing; not enough to benchmark index performance.",
+              file=sys.stderr)
+
     print("\nLoad with (XAMPP Windows):", file=sys.stderr)
     print(f"  C:\\xampp\\mysql\\bin\\mysql.exe -u root databruh_db < {path}", file=sys.stderr)
     print(r"  C:\xampp\mysql\bin\mysql.exe -u root databruh_db < database_files/databruh_db/database_creation_sql/individual_files/business_rules.sql", file=sys.stderr)
@@ -460,6 +602,13 @@ def main() -> int:
     print("\nLoad with (XAMPP Linux):", file=sys.stderr)
     print(f"  /opt/lampp/bin/mysql -u root databruh_db < {path}", file=sys.stderr)
     print("  /opt/lampp/bin/mysql -u root databruh_db < database_files/databruh_db/database_creation_sql/individual_files/business_rules.sql", file=sys.stderr)
+
+    print("\nLoad with (XAMPP macOS):", file=sys.stderr)
+    print(f"  /Applications/XAMPP/xamppfiles/bin/mysql -u root databruh_db < {path}", file=sys.stderr)
+    print("  /Applications/XAMPP/xamppfiles/bin/mysql -u root databruh_db < database_files/databruh_db/database_creation_sql/individual_files/business_rules.sql", file=sys.stderr)
+
+    print("\n  Rebuild the database first if it already contains generated data --", file=sys.stderr)
+    print("  rows use fixed IDs from 100000, so a second import collides on the PK.", file=sys.stderr)
     return 0
 
 

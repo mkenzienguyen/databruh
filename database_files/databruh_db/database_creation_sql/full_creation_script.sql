@@ -728,3 +728,99 @@ INSERT INTO maintenance_schedule_rule (ClassificationID, IntervalDays, Descripti
 (3, 180, 'Electric Van: routine service every 6 months'),
 (4, 120, 'Service Vehicle: serviced every 4 months'),
 (5, 90, 'Heavy Transport Truck: serviced every 3 months');
+
+
+-- ==========================================================
+-- Supplier and parts master data
+--
+-- Reference data, in the same category as activity_type and
+-- maintenance_schedule_rule above: a supplier register and parts
+-- catalogue exist independently of any maintenance job, and change
+-- rarely. Transactional consumption (which part was fitted to which
+-- activity, and any resulting warranty claim) is generated per job by
+-- tools/generate_mock_data.py.
+-- ==========================================================
+
+-- PartnerType distinguishes the vehicle manufacturer from an
+-- aftermarket parts supplier, which is what warranty_claim relies on to
+-- record who a claim sits with (extension task 3).
+INSERT INTO partner_company (PartnerID, PartnerName, PartnerType, DeliveryLeadTimes, ContactInfo, Description) VALUES
+(1, 'Ford Vietnam', 'Manufacturer', '5 Days', 'ford_vietnam_b2b@ford.com.vn, Tel: +84-24-3766-7888', 'OEM vehicle manufacturer and genuine parts provider'),
+(2, 'Isuzu Vietnam', 'Manufacturer', '7 Days', 'isuzu_care@isuzu-vietnam.com, Tel: +84-28-3895-9203', 'Heavy rigid and refrigerated truck manufacturer'),
+(3, 'Hanoi Auto Parts JSC', 'Supplier', '2 Days', 'sales@hanoiparts.vn, Tel: +84-24-3987-6543', 'Northern regional aftermarket warehouse'),
+(4, 'Saigon Fleet Supplies Co.', 'Supplier', '3 Days', 'order@saigonfleetparts.com, Tel: +84-28-7300-1122', 'Southern distribution centre'),
+(5, 'Carrier Transicold SE Asia', 'Supplier', '10 Days', 'global_coldchain@carrier.com, Tel: +65-6248-6100', 'Specialist cold-chain refrigeration components'),
+(6, 'VinFast EV Parts Center', 'Manufacturer', '6 Days', 'evparts@vinfast.vn, Tel: +84-225-730-9999', 'OEM EV battery and drivetrain components'),
+(7, 'Southern Truck Radiators Ltd.', 'Supplier', '4 Days', 'sales@southerntruckradiators.com, Tel: +84-28-3822-1010', 'Heavy truck cooling system specialist'),
+(8, 'Da Nang Tyre & Rubber', 'Supplier', '3 Days', 'b2b@dntyre.vn, Tel: +84-236-3844-2200', 'Commercial tyre distributor, central region');
+
+-- Each part has a designated primary supplier and an optional backup
+-- (extension task 2). QuantityOnHand / ReorderThreshold drive
+-- view_parts_below_reorder; a few are seeded at or below threshold so
+-- that view returns rows.
+INSERT INTO part (PartID, PartName, PrimarySupplierID, BackupSupplierID, QuantityOnHand, ReorderThreshold) VALUES
+(1,  'Front Brake Pad Set',            3, 1,    42, 15),
+(2,  'Rear Brake Pad Set',             3, 1,    36, 15),
+(3,  'Brake Disc Rotor',               3, 1,    18, 10),
+(4,  'Brake Fluid DOT4 (1L)',          4, 3,    64, 20),
+(5,  'Heavy-Duty Fleet Tyre',          8, 4,     9, 12),
+(6,  'Light Commercial Tyre',          8, 4,    27, 15),
+(7,  'Tyre Valve Kit',                 8, 3,    88, 25),
+(8,  'Refrigeration Compressor Belt',  5, 4,    14, 10),
+(9,  'Refrigeration Compressor Unit',  5, 2,     3,  2),
+(10, 'Cold-Chain Thermostat Sensor',   5, 4,    11,  8),
+(11, 'Refrigerant Gas R404A (5kg)',    5, 4,     6,  8),
+(12, 'EV Battery Module',              6, 3,     4,  3),
+(13, 'EV Charge Controller',           6, 3,     7,  4),
+(14, 'EV Coolant Pump',                6, 7,     9,  5),
+(15, 'Engine Oil Filter',              3, 4,   120, 40),
+(16, 'Air Filter Element',             3, 4,    95, 40),
+(17, 'Cabin Pollen Filter',            4, 3,    73, 30),
+(18, 'Engine Oil 15W-40 (5L)',         4, 3,   140, 50),
+(19, 'Engine Coolant Radiator',        7, 2,     8,  5),
+(20, 'Radiator Hose Set',              7, 3,    22, 12),
+(21, 'Water Pump Assembly',            7, 2,    13,  8),
+(22, 'Thermostat Housing',             7, 3,    17, 10),
+(23, 'Clutch Plate Assembly',          2, 7,     5,  6),
+(24, 'Transmission Fluid (4L)',        2, 4,    31, 15),
+(25, 'Alternator 24V',                 1, 3,    12,  8),
+(26, 'Starter Motor',                  1, 3,    10,  6),
+(27, 'Headlight Assembly',             1, 4,    26, 12),
+(28, 'Wiper Blade Pair',               4, 3,   110, 35),
+(29, 'Suspension Leaf Spring',         2, 7,     7,  5),
+(30, 'Wheel Bearing Kit',              3, 1,    24, 12);
+
+-- Per-supplier pricing. Every part is priced by its primary supplier
+-- and, where one exists, its backup -- so the cost difference between
+-- sourcing options is visible (extension task 2).
+INSERT INTO supplier_product_list (PartID, PartnerID, CostPerUnit, Description) VALUES
+(1,3,450000,'Aftermarket premium pads'),          (1,1,750000,'Ford genuine OEM pads'),
+(2,3,420000,'Aftermarket premium pads'),          (2,1,700000,'Ford genuine OEM pads'),
+(3,3,890000,'Vented rotor, aftermarket'),         (3,1,1450000,'OEM vented rotor'),
+(4,4,95000,'DOT4 synthetic'),                     (4,3,110000,'DOT4 premium'),
+(5,8,1200000,'All-season heavy duty'),            (5,4,1350000,'Premium radial'),
+(6,8,890000,'Light commercial all-season'),       (6,4,960000,'Premium light truck'),
+(7,8,35000,'Standard valve kit'),                 (7,3,42000,'Reinforced valve kit'),
+(8,5,800000,'Thermal-resistant belt'),            (8,4,950000,'Standard cooling belt'),
+(9,5,18500000,'Full compressor unit'),            (9,2,21000000,'Isuzu OEM compressor'),
+(10,5,1250000,'Digital probe sensor'),            (10,4,1400000,'Analogue probe sensor'),
+(11,5,2200000,'R404A refrigerant 5kg'),           (11,4,2450000,'R404A premium grade'),
+(12,6,18000000,'OEM EV battery module'),          (12,3,15500000,'Aftermarket-compatible module'),
+(13,6,6800000,'OEM charge controller'),           (13,3,5900000,'Aftermarket controller'),
+(14,6,2400000,'OEM EV coolant pump'),             (14,7,2100000,'Compatible coolant pump'),
+(15,3,120000,'Spin-on oil filter'),               (15,4,135000,'Premium oil filter'),
+(16,3,180000,'Panel air filter'),                 (16,4,205000,'High-flow air filter'),
+(17,4,150000,'Activated carbon cabin filter'),    (17,3,165000,'Standard cabin filter'),
+(18,4,650000,'Mineral 15W-40, 5L'),               (18,3,820000,'Semi-synthetic 15W-40, 5L'),
+(19,7,3200000,'Heavy-duty replacement radiator'), (19,2,3800000,'Isuzu genuine radiator'),
+(20,7,540000,'Silicone hose set'),                (20,3,480000,'Rubber hose set'),
+(21,7,1850000,'Water pump with gasket'),          (21,2,2300000,'OEM water pump'),
+(22,7,420000,'Thermostat housing assembly'),      (22,3,390000,'Aftermarket housing'),
+(23,2,7400000,'Isuzu OEM clutch plate'),          (23,7,6100000,'Heavy-duty aftermarket plate'),
+(24,2,780000,'ATF transmission fluid 4L'),        (24,4,690000,'Universal ATF 4L'),
+(25,1,4300000,'24V alternator, OEM'),             (25,3,3600000,'Rebuilt 24V alternator'),
+(26,1,3900000,'OEM starter motor'),               (26,3,3100000,'Rebuilt starter motor'),
+(27,1,2600000,'OEM headlight assembly'),          (27,4,1950000,'Aftermarket assembly'),
+(28,4,145000,'Pair, 24 inch'),                    (28,3,160000,'Premium pair, 24 inch'),
+(29,2,5200000,'Isuzu OEM leaf spring'),           (29,7,4400000,'Heavy-duty aftermarket spring'),
+(30,3,760000,'Wheel bearing kit with seals'),     (30,1,1100000,'OEM bearing kit');
